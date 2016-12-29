@@ -5,6 +5,5 @@
 #include "Controller.hpp"
 
 void Controller::foo() {
-    std::cout << "foo!" << '\n';
-    
+    std::cout << "foo" << '\n';
 }
