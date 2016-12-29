@@ -20,20 +20,21 @@ add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 target_link_libraries(${PROJECT_NAME} mvc)
 
-#TODO: add custom bash commands
-add_custom_command(
-        OUTPUT FILENAME.txt
-        #DEPENDS ${PROJECT_NAME}
-        COMMAND ${CMAKE_COMMAND} -E touch FILENAME.txt
-        COMMAND ${CMAKE_COMMAND} -E echo "creating FILENAME"
-)
-
 ## cmake options
 option(ARM "Build for armhf" OFF)
 
 option(O "Optimalize" 0)
 
+option(CP "copy exec to given location" "")
+
 ## options checks
+if (NOT CP STREQUAL "")
+    add_custom_command(TARGET ${PROJECT_NAME}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> ${CP})
+
+endif()
+
 if (O STREQUAL "0")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
 
@@ -53,7 +54,7 @@ if (ARM)
     set(TOOLCHAIN_PREFIX arm-linux-gnueabihf)
     set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
     set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
-    ##TODO: static or dynamic option needs to be added
+
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 
 else()

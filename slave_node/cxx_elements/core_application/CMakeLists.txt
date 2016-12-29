@@ -11,5 +11,3 @@ include_directories(model)
 include_directories(view)
 
 add_library(mvc ${mvc_lib})
-
-#target_link_libraries(mvc core_application)
