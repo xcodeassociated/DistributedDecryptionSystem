@@ -4,6 +4,8 @@
 
 #include "Controller.hpp"
 
-void Controller::foo() {
-    std::cout << "foo" << '\n';
+namespace core {
+    bool Controller::foo() {
+        return true;
+    }
 }

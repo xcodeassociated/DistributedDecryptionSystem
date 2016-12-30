@@ -14,6 +14,8 @@ include_directories(${APP_CORE}/view)
 
 add_subdirectory(cxx_elements)
 
+add_subdirectory(cxx_tests)
+
 set(SOURCE_FILES main.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})

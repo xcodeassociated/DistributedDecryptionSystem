@@ -6,14 +6,16 @@
 #define SLAVE_NODE_CONTROLLER_HPP
 
 #include <iostream>
-
-class Controller {
-public:
-    void foo();
-    inline void inline_foo() {
-        std::cout << "inline foo" << "\n";
-    }
-};
+namespace core {
+    class Controller {
+    public:
+        bool foo();
+        
+        inline bool inline_foo() {
+            return true;
+        }
+    };
+}
 
 
 #endif //SLAVE_NODE_CONTROLLER_HPP

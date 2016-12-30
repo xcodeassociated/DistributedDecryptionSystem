@@ -3,3 +3,7 @@
 //
 
 #include "View.hpp"
+
+namespace core {
+    
+}

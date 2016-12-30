@@ -3,3 +3,7 @@
 //
 
 #include "Model.hpp"
+
+namespace core {
+    
+}

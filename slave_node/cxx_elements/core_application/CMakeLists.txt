@@ -10,4 +10,5 @@ include_directories(controller)
 include_directories(model)
 include_directories(view)
 
-add_library(mvc ${mvc_lib})
+## keyword STATIC for static lib linking
+add_library(mvc STATIC ${mvc_lib})
