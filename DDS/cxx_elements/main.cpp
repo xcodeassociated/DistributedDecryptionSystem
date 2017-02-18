@@ -1,17 +1,16 @@
 #include <iostream>
-
+#include "utils.hpp"
 #include "Controller.hpp"
-
-constexpr auto endl = '\n';
 
 int main(int argc, const char* argv[]) {
     std::cout << std::boolalpha;
+    std::cout.sync_with_stdio(false);
     
-    std::cout << "Hello, World! Slave node" << std::endl;
+    std::cout << "Hello, World! DDS" << std::endl;
     
     core::Controller c;
     std::cout << c.foo() << endl;
     std::cout << c.inline_foo() << endl;
     
-    return 0;
+    return EXIT_SUCCESS;
 }
