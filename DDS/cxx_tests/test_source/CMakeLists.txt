@@ -12,9 +12,16 @@ set(TEST_SOURCES
         mvc_model_tests.cpp
         ${MOCK}/ModelMock.hpp)
 
-add_executable(RunTests ${GMOCK_TESTS_SOURCE_FILES} ${TEST_SOURCES})
+add_executable(RunTests
+        ${GMOCK_TESTS_SOURCE_FILES}
+        ${TEST_SOURCES})
 
-target_link_libraries(RunTests gtest gtest_main gmock gmock_main pthread
+target_link_libraries(RunTests
+        gtest
+        gtest_main
+        gmock
+        gmock_main
+        pthread
         mvc)
 
 add_test(RunTests RunTests)

@@ -11,4 +11,5 @@ include_directories(model)
 include_directories(view)
 
 ## keyword STATIC for static lib linking
-add_library(mvc SHARED ${mvc_lib})
+add_library(mvc SHARED
+        ${mvc_lib})
