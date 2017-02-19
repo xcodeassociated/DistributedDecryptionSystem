@@ -1,9 +1,10 @@
-#include <boost/mpi.hpp>
 #include <iostream>
 #include <string>
-#include <boost/serialization/string.hpp>
 #include "utils.hpp"
 #include "Controller.hpp"
+
+#include <boost/mpi.hpp>
+#include <boost/serialization/string.hpp>
 
 namespace mpi = boost::mpi;
 
@@ -17,7 +18,7 @@ namespace mpi = boost::mpi;
 int main(int argc, const char* argv[]) {
 
 #ifdef DEBUG
-    std::cout << "debug " << RANK;
+    std::cout << "-- DEBUG, RANK: " << RANK << std::endl;
 #endif
     
     std::cout << std::boolalpha;

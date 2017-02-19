@@ -11,56 +11,89 @@ option(O "Optimalize" 0)
 
 option(CP "copy exec to given location" "")
 
-if (ARM)
-    ## armhf only configuration
-    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
-
-    set(CROSS_COMPILER_PATH /usr/bin/)
-    set(TOOLCHAIN_PREFIX ${CROSS_COMPILER_PATH}arm-linux-gnueabihf)
-    set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
-    set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
-
-else()
-    ## amd64 only configuration
-
-endif()
-
 set(CMAKE_VERBOSE_MAKEFILE on)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpedantic")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    message("Linux")
+    message(STATUS "Linux")
 
-    set (CMAKE_PREFIX_PATH "/usr/include")
-    set (CMAKE_PREFIX_PATH "/usr/include/mpi")
-    set (CMAKE_PREFIX_PATH "/usr/include/openmpi")
-    set (CMAKE_PREFIX_PATH "/usr/include/boost")
+    if (ARM)
+        ## armhf only configuration
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 
-    set (CMAKE_PREFIX_PATH "/usr/lib/")
-    set (CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/")
+        set(CROSS_COMPILER_PATH /usr/bin/)
+        set(TOOLCHAIN_PREFIX ${CROSS_COMPILER_PATH}arm-linux-gnueabihf)
+        set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
+        set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
 
-    include_directories("/usr/include/mpi")
-    include_directories(${MPI_INCLUDE_PATH})
-    include_directories(${Boost_INCLUDE_DIRS})
+        set (CMAKE_PREFIX_PATH "/usr/arm-boost/")
+        set (CMAKE_PREFIX_PATH "/usr/arm-boost/include/")
+        set (CMAKE_PREFIX_PATH "/usr/arm-boost/lib")
 
-    find_package(MPI REQUIRED)
-    if(MPI_FOUND)
-        message(STATUS "MPI Found!")
-        message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
-    endif()
+        set (BOOST_ROOT "/usr/arm-boost/")
+        find_package(Boost 1.6.0 COMPONENTS mpi serialization REQUIRED)
+        if(Boost_FOUND)
+            message(STATUS "ARM_BOOST Found!")
+            message(STATUS "ARM_Boost version: ${Boost_VERSION}")
+            message(STATUS "ARM_Boost include: ${Boost_INCLUDE_DIRS}")
+        endif()
 
-    find_package(Boost 1.5.8 COMPONENTS mpi serialization REQUIRED)
-    if(Boost_FOUND)
-        message(STATUS "Boost Found!")
-        message(STATUS "Boost include: ${Boost_INCLUDE_DIRS}")
+        set (CMAKE_PREFIX_PATH "/usr/arm-openmpi/")
+        set (CMAKE_PREFIX_PATH "/usr/arm-openmpi/include")
+        set (CMAKE_PREFIX_PATH "/usr/arm-openmpi/lib")
+
+        find_package(MPI REQUIRED)
+        if(MPI_FOUND)
+            message(STATUS "ARM_MPI Found!")
+        endif()
+
+        include_directories("/usr/arm-openmpi/include")
+        include_directories(${MPI_INCLUDE_PATH})
+        include_directories(${Boost_INCLUDE_DIRS})
+
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ldl -fPIC -Wl,-rpath -Wl,/home/pi/.linuxbrew/opt/libevent/lib -Wl,-rpath -Wl,/home/pi/.linuxbrew/Cellar/open-mpi/1.10.2_1/lib -Wl,--enable-new-dtags -L/home/pi/.linuxbrew/Cellar/open-mpi/1.10.2_1/lib")
+
+        ## to link shared library when running on cluster
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,/mpi/zzz")
+
+    else()
+        ## amd64 only configuration
+
+        set (CMAKE_PREFIX_PATH "/usr/include")
+        set (CMAKE_PREFIX_PATH "/usr/include/mpi")
+        set (CMAKE_PREFIX_PATH "/usr/include/openmpi")
+        set (CMAKE_PREFIX_PATH "/usr/include/boost")
+
+        set (CMAKE_PREFIX_PATH "/usr/lib/")
+        set (CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/")
+
+        include_directories("/usr/include/mpi")
+        include_directories(${MPI_INCLUDE_PATH})
+        include_directories(${Boost_INCLUDE_DIRS})
+
+        find_package(MPI REQUIRED)
+        if(MPI_FOUND)
+            message(STATUS "MPI Found!")
+            message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
+        endif()
+
+        find_package(Boost 1.5.8 COMPONENTS mpi serialization REQUIRED)
+        if(Boost_FOUND)
+            message(STATUS "Boost Found!")
+            message(STATUS "Boost version: ${Boost_VERSION}")
+            message(STATUS "Boost include: ${Boost_INCLUDE_DIRS}")
+            message(STATUS "Boost libs: ${Boost_LIBRARY_DIRS}")
+        endif()
+
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/openmpi/lib -Wl,--enable-new-dtags")
+
     endif()
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/openmpi/lib -Wl,--enable-new-dtags")
 
 endif()
 
@@ -98,11 +131,20 @@ set(SOURCE_FILES ${CXX}/main.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
-target_link_libraries(${PROJECT_NAME}
-        ${MPI_LIBRARIES}
-        ${Boost_LIBRARIES}
-        pthread
-        mvc)
+if (ARM)
+    target_link_libraries(${PROJECT_NAME}
+            ${MPI_LIBRARIES}
+            /usr/arm-boost/lib/libboost_mpi.so
+            /usr/arm-boost/lib/libboost_serialization.so
+            pthread
+            mvc)
+else()
+    target_link_libraries(${PROJECT_NAME}
+            ${MPI_LIBRARIES}
+            ${Boost_LIBRARIES}
+            pthread
+            mvc)
+endif()
 
 ## options checks
 if (NOT CP STREQUAL "")
