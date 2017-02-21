@@ -29,28 +29,16 @@
     <orderEntry type="module-library">
       <library name="Header Search Paths">
         <CLASSES>
-          <root url="file:///usr/local/include" />
-          <root url="file:///usr/arm-linux-gnueabihf/include" />
-          <root url="file:///usr/lib/gcc-cross/arm-linux-gnueabihf/5/include" />
-          <root url="file:///usr/lib/gcc-cross/arm-linux-gnueabihf/5/include-fixed" />
-          <root url="file:///usr/lib/openmpi/include" />
-          <root url="file:///usr/lib/gcc/x86_64-linux-gnu/5/include-fixed" />
-          <root url="file:///usr/lib/gcc/x86_64-linux-gnu/5/include" />
-          <root url="file:///usr/arm-openmpi/include" />
           <root url="file:///usr/include" />
-          <root url="file:///usr/arm-boost/include" />
+          <root url="file:///usr/lib/gcc/x86_64-linux-gnu/5/include" />
+          <root url="file:///usr/lib/gcc/x86_64-linux-gnu/5/include-fixed" />
+          <root url="file:///usr/local/include" />
         </CLASSES>
         <SOURCES>
-          <root url="file:///usr/local/include" />
-          <root url="file:///usr/arm-linux-gnueabihf/include" />
-          <root url="file:///usr/lib/gcc-cross/arm-linux-gnueabihf/5/include" />
-          <root url="file:///usr/lib/gcc-cross/arm-linux-gnueabihf/5/include-fixed" />
-          <root url="file:///usr/lib/openmpi/include" />
-          <root url="file:///usr/lib/gcc/x86_64-linux-gnu/5/include-fixed" />
-          <root url="file:///usr/lib/gcc/x86_64-linux-gnu/5/include" />
-          <root url="file:///usr/arm-openmpi/include" />
           <root url="file:///usr/include" />
-          <root url="file:///usr/arm-boost/include" />
+          <root url="file:///usr/lib/gcc/x86_64-linux-gnu/5/include" />
+          <root url="file:///usr/lib/gcc/x86_64-linux-gnu/5/include-fixed" />
+          <root url="file:///usr/local/include" />
         </SOURCES>
       </library>
     </orderEntry>

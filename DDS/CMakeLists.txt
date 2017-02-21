@@ -34,6 +34,10 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set (CMAKE_PREFIX_PATH "/usr/arm-boost/include/")
         set (CMAKE_PREFIX_PATH "/usr/arm-boost/lib")
 
+        set (CMAKE_PREFIX_PATH "/usr/arm-cryptopp/include")
+        set (CMAKE_PREFIX_PATH "/usr/arm-cryptopp/lib")
+
+
         set (BOOST_ROOT "/usr/arm-boost/")
         find_package(Boost 1.6.0 COMPONENTS mpi serialization REQUIRED)
         if(Boost_FOUND)
@@ -54,16 +58,22 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         include_directories("/usr/arm-openmpi/include")
         include_directories(${MPI_INCLUDE_PATH})
         include_directories(${Boost_INCLUDE_DIRS})
+        include_directories("/usr/arm-cryptopp/include")
 
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ldl -fPIC -Wl,-rpath -Wl,/home/pi/.linuxbrew/opt/libevent/lib -Wl,-rpath -Wl,/home/pi/.linuxbrew/Cellar/open-mpi/1.10.2_1/lib -Wl,--enable-new-dtags -L/home/pi/.linuxbrew/Cellar/open-mpi/1.10.2_1/lib")
 
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/usr/arm-cryptopp/lib -lcryptopp")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf/")
+
         ## to link shared library when running on cluster
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,/mpi/zzz")
+
 
     else()
         ## amd64 only configuration
 
         set (CMAKE_PREFIX_PATH "/usr/include")
+        set (CMAKE_PREFIX_PATH "/usr/include/cryptopp/")
         set (CMAKE_PREFIX_PATH "/usr/include/mpi")
         set (CMAKE_PREFIX_PATH "/usr/include/openmpi")
         set (CMAKE_PREFIX_PATH "/usr/include/boost")
@@ -74,6 +84,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         include_directories("/usr/include/mpi")
         include_directories(${MPI_INCLUDE_PATH})
         include_directories(${Boost_INCLUDE_DIRS})
+        include_directories("/usr/include/cryptopp/")
 
         find_package(MPI REQUIRED)
         if(MPI_FOUND)
@@ -90,6 +101,13 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         endif()
 
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/openmpi/lib -Wl,--enable-new-dtags")
+
+        set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/cryptopp-cmake")
+        find_package(CryptoPP REQUIRED)
+
+        if (CryptoPP_FOUND)
+            message(STATUS "Crypto++ found!")
+        endif()
 
     endif()
 
@@ -136,12 +154,15 @@ if (ARM)
             ${MPI_LIBRARIES}
             /usr/arm-boost/lib/libboost_mpi.so
             /usr/arm-boost/lib/libboost_serialization.so
+            /usr/arm-cryptopp/lib/libcrypto++.so.6
+            /usr/arm-cryptopp/lib/libcryptopp.so
             pthread
             mvc)
 else()
     target_link_libraries(${PROJECT_NAME}
             ${MPI_LIBRARIES}
             ${Boost_LIBRARIES}
+            ${CRYPTOPP_LIBRARY}
             pthread
             mvc)
 endif()
