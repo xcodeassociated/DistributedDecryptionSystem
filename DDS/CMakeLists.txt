@@ -92,7 +92,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
         endif()
 
-        find_package(Boost 1.5.8 COMPONENTS mpi serialization REQUIRED)
+        find_package(Boost 1.5.8 COMPONENTS mpi serialization program_options REQUIRED)
         if(Boost_FOUND)
             message(STATUS "Boost Found!")
             message(STATUS "Boost version: ${Boost_VERSION}")
@@ -154,6 +154,7 @@ if (ARM)
             ${MPI_LIBRARIES}
             /usr/arm-boost/lib/libboost_mpi.so
             /usr/arm-boost/lib/libboost_serialization.so
+            /usr/arm-boost/lib/libboost_program_options.so
             /usr/arm-cryptopp/lib/libcrypto++.so.6
             /usr/arm-cryptopp/lib/libcryptopp.so
             pthread
