@@ -14,14 +14,17 @@ option(CP "copy exec to given location" "")
 set(CMAKE_VERBOSE_MAKEFILE on)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpedantic")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     message(STATUS "Linux")
 
     if (ARM)
+        ## set optimization for ARM - to run faster on my own 'develop' cluster.
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+
         ## armhf only configuration
         #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 
@@ -134,10 +137,9 @@ set(APP_CORE cxx_elements/core_application)
 set(CXX cxx_elements)
 
 ## includes for main.cpp
-include_directories(${APP_CORE}/controller)
-include_directories(${APP_CORE}/model)
-include_directories(${APP_CORE}/view)
-include_directories(${CXX}/utilities)
+include_directories(${APP_CORE}/MasterNode/MainClass)
+include_directories(${APP_CORE}/SlaveNode/MainClass)
+include_directories(${CXX})
 
 set(MOCKS_DIR cxx_tests/test_source/mocks_source)
 
@@ -158,14 +160,16 @@ if (ARM)
             /usr/arm-cryptopp/lib/libcrypto++.so.6
             /usr/arm-cryptopp/lib/libcryptopp.so
             pthread
-            mvc)
+            MasterNodeObject
+            SlaveNodeObject)
 else()
     target_link_libraries(${PROJECT_NAME}
             ${MPI_LIBRARIES}
             ${Boost_LIBRARIES}
             ${CRYPTOPP_LIBRARY}
             pthread
-            mvc)
+            MasterNodeObject
+            SlaveNodeObject)
 endif()
 
 ## options checks

@@ -8,9 +8,10 @@ set(MOCK mocks_source)
 include_directories(${MOCK})
 
 set(TEST_SOURCES
-        mvc_controller_tests.cpp
-        mvc_model_tests.cpp
-        ${MOCK}/ModelMock.hpp)
+        SlaveMainClass_test.cpp
+        MasterMainClass_test.cpp
+        ${MOCK}/MasterMainClass_mock.hpp
+        ${MOCK}/SlaveMainClass_mock.hpp)
 
 add_executable(RunTests
         ${GMOCK_TESTS_SOURCE_FILES}
@@ -21,7 +22,6 @@ target_link_libraries(RunTests
         gtest_main
         gmock
         gmock_main
-        pthread
-        mvc)
+        pthread)
 
 add_test(RunTests RunTests)
