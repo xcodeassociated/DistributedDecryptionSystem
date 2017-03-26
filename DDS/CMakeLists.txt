@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5.1)
 project(DDS)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-message(STATUS "Current DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+message(STATUS "Source DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
 ## cmake options
 option(ARM "Build for armhf" OFF)
@@ -19,6 +19,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
+
+message (STATUS "Build DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     message(STATUS "Linux")
@@ -178,6 +180,12 @@ endif()
 if (NOT CP STREQUAL "")
     add_custom_command(TARGET ${PROJECT_NAME}
             POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> ${CP})
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> ${CP}
+
+            ## Copy also SHARED LIBs
+            COMMAND ${CMAKE_COMMAND} -E
+                copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/MasterNode/libMasterNodeObject.so ${CP}
+            COMMAND ${CMAKE_COMMAND} -E
+                copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/libSlaveNodeObject.so ${CP})
 
 endif()

@@ -104,7 +104,7 @@ Please do submit code. Here's what you need to do:
   1. Ensure that there are unit tests for your code.
   1. Sign a Contributor License Agreement.
   1. Create a patch file using `svn diff`.
-  1. We use [Rietveld](http://codereview.appspot.com/) to do web-based code reviews.  You can read about the tool [here](https://github.com/rietveld-codereview/rietveld/wiki).  When you are ready, upload your patch via Rietveld and notify `googlemock@googlegroups.com` to review it.  There are several ways to upload the patch.  We recommend using the [upload\_gmock.py](../scripts/upload_gmock.py) script, which you can find in the `scripts/` folder in the SVN trunk.
+  1. We use [Rietveld](http://codereview.appspot.com/) to do web-based code reviews.  You can read about the tool [here](https://github.com/rietveld-codereview/rietveld/wiki).  When you are ready, upload your patch via Rietveld and process `googlemock@googlegroups.com` to review it.  There are several ways to upload the patch.  We recommend using the [upload\_gmock.py](../scripts/upload_gmock.py) script, which you can find in the `scripts/` folder in the SVN trunk.
 
 ## Google Mock Committers ##
 

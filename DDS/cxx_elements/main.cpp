@@ -1,5 +1,7 @@
 #include <iostream>
 #include <sstream>
+#include <vector>
+#include <tuple>
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -12,6 +14,8 @@
 #include <boost/serialization/string.hpp>
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
+
+#include <boost/lockfree/queue.hpp>
 
 #include "MasterMainClass.hpp"
 #include "SlaveMainClass.hpp"
@@ -106,8 +110,8 @@ TASK_LIMIT_TYPE NUMBER_OF_JOBS;
 
 using data_type = std::string;
 
-
-
+    
+    
 int main(int argc, const char* argv[]) {
     std::cout << std::boolalpha;
     std::cout.sync_with_stdio(false);
@@ -145,24 +149,26 @@ int main(int argc, const char* argv[]) {
         core::MasterMainClass master;
         (void)master.init();
     
+        boost::lockfree::queue<int> queue(128);
+        
         auto main_thread_id = std::this_thread::get_id();
-        std::cout << "[debug] Master main thread id: " << main_thread_id << std::endl;
+        std::cout << "[debug: " << world.rank() << "] Master main thread id: " << main_thread_id << std::endl;
         
         std::mutex m;
         std::condition_variable cv;
         bool ready = false;
       
-        auto receive_thread_implementation = [&world, &master, &ready, &m, &cv]{
+        auto receive_thread_implementation = [&world, &master, &ready, &m, &cv, &queue]{
             {
                 std::lock_guard<std::mutex> lg(m);
                 auto thread_id = std::this_thread::get_id();
-                std::cout << "[debug] Receive thread id: " << thread_id << std::endl;
-                std::cout << "[debug] Receive thread waits for trigger..." << std::endl;
+                std::cout << "[debug: " << world.rank() << "] Receive thread id: " << thread_id << std::endl;
+                std::cout << "[debug: " << world.rank() << "] Receive thread waits for trigger..." << std::endl;
             }
             std::unique_lock<std::mutex> lk(m);
             cv.wait(lk, [&ready]{return ready;});
             
-            std::cout << "[debug] Receive thread waits for triggered!" << std::endl;
+            std::cout << "[debug: " << world.rank() << "] Receive thread waits for triggered!" << std::endl;
             
             boost::optional<mpi::status> stat;
             data_type data{""};
@@ -172,10 +178,10 @@ int main(int argc, const char* argv[]) {
                     mpi::request req = world.irecv((*stat).source(), (*stat).tag(), data);
 
                     if (req.test()){
-                        std::cout << "[debug] Receive thread received message!!!\n    data:" << data << std::endl;
-
+                        std::cout << "[debug: " << world.rank() << "] Receive thread hs received message\n    data:" << data << std::endl;
+                        queue.push(static_cast<int>((*stat).source()));
                     }
-                    
+
                     stat.reset();
                     data = {};
                 }
@@ -186,9 +192,9 @@ int main(int argc, const char* argv[]) {
         
         std::thread receive_thread(receive_thread_implementation);
         
-        std::cout << "[debug] Main thread goes to sleep for 2s..." << std::endl;
-        std::this_thread::sleep_for(2s);
-        std::cout << "[debug] Main thread wakes up!" << std::endl;
+        std::cout << "[debug: " << world.rank() << "] Main thread goes to sleep for 2s..." << std::endl;
+        //std::this_thread::sleep_for(2s);
+        std::cout << "[debug: " << world.rank() << "] Main thread wakes up!" << std::endl;
         
         {
             std::lock_guard< std::mutex > lk(m);
@@ -196,30 +202,125 @@ int main(int argc, const char* argv[]) {
         }
         cv.notify_one();
         
-        
-        //TODO
+        auto initial_messages = [&]{
+            for (int i = 1; i < world.size(); i++){
+                std::stringstream ss;
+                ss << "Hello form Master to: " << i << std::endl;
+                data_type _data{ss.str()};
+                mpi::request send_rq = world.isend(i, 0, _data);
+                send_rq.wait();
+            }
+        };
+        std::this_thread::sleep_for(1s);
+        initial_messages();
+    
+        std::size_t received = 0l;
+        while (true){
+            
+            int data = 0;
+            
+            while (queue.pop(data)) {
+                std::cout <<"[debug: " << world.rank() << "]: (received " << ++received << ") data: " << data << std::endl;
+    
+                {
+                    std::stringstream ss;
+                    ss << "Hello form Master to: " << data << std::endl;
+                    data_type _data{ss.str()};
+                    mpi::request send_rq = world.isend(data, 0, _data);
+                    send_rq.wait();
+                }
+                
+                data = 0;
+            }
+            std::this_thread::sleep_for(100ms);
+        }
         
         receive_thread.join();
         
-        std::cout << "[debug] Main thread has been joined with receive thread." << std::endl;
+        std::cout << "[debug: " << world.rank() << "] Main thread has been joined with receive thread." << std::endl;
         
     } else {
     
         core::SlaveMainClass slave;
         (void)slave.init();
-    
+        
+        boost::lockfree::queue<int> queue(128);
+        
         auto main_thread_id = std::this_thread::get_id();
-        std::cout << "[debug] Slave [" << world.rank() << "]: main thread id: " << main_thread_id << std::endl;
+        std::cout << "[debug: " << world.rank() << "] Slave [" << world.rank() << "]: main thread id: " << main_thread_id << std::endl;
         
-        //std::this_thread::sleep_for(std::chrono::seconds(3 + world.rank()));
-        std::cout << "[debug] Slave rank: " << world.rank() << " send message!" << std::endl;
+        std::mutex m;
+        std::condition_variable cv;
+        bool ready = false;
+    
+        auto receive_thread_implementation = [&world, &slave, &ready, &m, &cv, &queue]{
+            {
+                std::lock_guard<std::mutex> lg(m);
+                auto thread_id = std::this_thread::get_id();
+                std::cout << "[debug: " << world.rank() << "] Receive thread id: " << thread_id << std::endl;
+                std::cout << "[debug: " << world.rank() << "] Receive thread waits for trigger..." << std::endl;
+            }
+            std::unique_lock<std::mutex> lk(m);
+            cv.wait(lk, [&ready]{return ready;});
         
-        std::stringstream ss;
-        ss << "message: Hello form slave: " << world.rank() << std::endl;
-        data_type data{ss.str()};
-        mpi::request send_rq = world.isend(0, 0, data);
-        send_rq.wait();
+            std::cout << "[debug: " << world.rank() << "] Receive thread waits for triggered!" << std::endl;
+        
+            boost::optional<mpi::status> stat;
+            data_type data{""};
+            while (true) {
+                stat = world.iprobe(mpi::any_source, mpi::any_tag);
+                if (stat){
+                    mpi::request req = world.irecv((*stat).source(), (*stat).tag(), data);
 
+                    if (req.test()){
+                        std::cout << "[debug: " << world.rank() << "] Receive thread received message\n    data:" << data << std::endl;
+                        queue.push(static_cast<int>((*stat).source()));
+                    }
+
+                    stat.reset();
+                    data = {};
+                }
+                std::this_thread::sleep_for(100ms);
+            }
+        
+        };
+    
+        std::thread receive_thread(receive_thread_implementation);
+        
+        {
+            std::lock_guard< std::mutex > lk(m);
+            ready = true;
+        }
+        cv.notify_one();
+    
+        std::cout << "[debug: " << world.rank() << "] Slave rank: " << world.rank() << " sending message!" << std::endl;
+    
+        std::size_t received = 0l;
+        while (true){
+            
+            int data = 0;
+            
+            while (queue.pop(data)) {
+                std::cout <<"[debug: " << world.rank() << "]: (received " << ++received << ") data: " << data << std::endl;
+                
+                {
+                    std::stringstream ss;
+                    ss << "Hello form Slave to: " << data << std::endl;
+                    data_type _data{ss.str()};
+                    mpi::request send_rq = world.isend(data, 0, _data);
+                    send_rq.wait();
+                }
+            
+                data = 0;
+            }
+            std::this_thread::sleep_for(100ms);
+        }
+    
+    
+        receive_thread.join();
+    
+        std::cout << "[debug: " << world.rank() << "] Main thread has been joined with receive thread." << std::endl;
+        
     }
     
     return EXIT_SUCCESS;
