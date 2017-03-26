@@ -18,6 +18,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     message(STATUS "Linux")
 
@@ -141,7 +143,7 @@ include_directories(${APP_CORE}/MasterNode/MainClass)
 include_directories(${APP_CORE}/SlaveNode/MainClass)
 include_directories(${CXX})
 
-set(MOCKS_DIR cxx_tests/test_source/mocks_source)
+set(MOCKS_DIR cxx_tests/test_source/mocks_headres)
 
 add_subdirectory(${CXX})
 

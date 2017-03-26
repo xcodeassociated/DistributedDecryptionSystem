@@ -3,13 +3,13 @@ enable_testing()
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 include_directories(${gmock_SOURCE_DIR}/include ${gmock_SOURCE_DIR})
 
-set(MOCK mocks_source)
+set(MOCK mocks_headres)
 
 include_directories(${MOCK})
 
 set(TEST_SOURCES
-        SlaveMainClass_test.cpp
-        MasterMainClass_test.cpp
+        test_implementation/SlaveMainClass_test.cpp
+        test_implementation/MasterMainClass_test.cpp
         ${MOCK}/MasterMainClass_mock.hpp
         ${MOCK}/SlaveMainClass_mock.hpp)
 

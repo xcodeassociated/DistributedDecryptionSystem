@@ -17,8 +17,8 @@
       <sourceFolder url="file://$MODULE_DIR$/cxx_tests/test_source/mvc_model_tests.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cxx_tests/test_source/CMakeLists.txt" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cxx_tests/test_source/mvc_controller_tests.cpp" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cxx_tests/test_source/SlaveMainClass_test.cpp" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cxx_tests/test_source/MasterMainClass_test.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/cxx_tests/test_source/test_implementation/SlaveMainClass_test.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/cxx_tests/test_source/test_implementation/MasterMainClass_test.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cxx_tests/test_source/mocks_source/ModelMock.hpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cxx_tests/test_libs/googlemock/src/gmock-all.cc" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cxx_tests/test_libs/googlemock/src/gmock_main.cc" isTestSource="false" />
