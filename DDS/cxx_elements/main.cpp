@@ -27,9 +27,9 @@ using namespace std::chrono_literals;
 //#define CRYPTO
 
 #ifdef CRYPTO
-#include "modes.h"
-#include "aes.h"
-#include "filters.h"
+#include <cryptopp/modes.h>
+#include <cryptopp/aes.h>
+#include <cryptopp/filters.h>
 #endif
 
 void crypto() {
@@ -191,11 +191,11 @@ int main(int argc, const char* argv[]) {
         };
         
         std::thread receive_thread(receive_thread_implementation);
-        
+
         std::cout << "[debug: " << world.rank() << "] Main thread goes to sleep for 2s..." << std::endl;
-        //std::this_thread::sleep_for(2s);
+        std::this_thread::sleep_for(1s);
         std::cout << "[debug: " << world.rank() << "] Main thread wakes up!" << std::endl;
-        
+
         {
             std::lock_guard< std::mutex > lk(m);
             ready = true;
@@ -204,24 +204,30 @@ int main(int argc, const char* argv[]) {
         
         auto initial_messages = [&]{
             for (int i = 1; i < world.size(); i++){
+                std::cout <<"[debug: " << world.rank() << "]: Master sends message to: " << i << std::endl;
+                
                 std::stringstream ss;
                 ss << "Hello form Master to: " << i << std::endl;
                 data_type _data{ss.str()};
-                mpi::request send_rq = world.isend(i, 0, _data);
-                send_rq.wait();
+                //mpi::request send_rq = world.isend(i, 0, _data);
+                std::cout <<"[debug: " << world.rank() << "]: Before wait" << std::endl;
+                //send_rq.wait();
+                world.send(i, 0, _data);
+                std::cout <<"[debug: " << world.rank() << "]: After wait" << std::endl;
             }
         };
-        std::this_thread::sleep_for(1s);
+        std::this_thread::sleep_for(5s);
+        std::cout <<"[debug: " << world.rank() << "]: Master sends init messages." << std::endl;
         initial_messages();
     
         std::size_t received = 0l;
         while (true){
-            
+
             int data = 0;
-            
+
             while (queue.pop(data)) {
                 std::cout <<"[debug: " << world.rank() << "]: (received " << ++received << ") data: " << data << std::endl;
-    
+
                 {
                     std::stringstream ss;
                     ss << "Hello form Master to: " << data << std::endl;
@@ -229,7 +235,7 @@ int main(int argc, const char* argv[]) {
                     mpi::request send_rq = world.isend(data, 0, _data);
                     send_rq.wait();
                 }
-                
+
                 data = 0;
             }
             std::this_thread::sleep_for(100ms);
@@ -268,6 +274,7 @@ int main(int argc, const char* argv[]) {
             boost::optional<mpi::status> stat;
             data_type data{""};
             while (true) {
+                std::cout << "PROBE!\n";
                 stat = world.iprobe(mpi::any_source, mpi::any_tag);
                 if (stat){
                     mpi::request req = world.irecv((*stat).source(), (*stat).tag(), data);
@@ -284,25 +291,24 @@ int main(int argc, const char* argv[]) {
             }
         
         };
-    
-        std::thread receive_thread(receive_thread_implementation);
         
+        std::thread receive_thread(receive_thread_implementation);
+        std::this_thread::sleep_for(1s);
         {
             std::lock_guard< std::mutex > lk(m);
             ready = true;
         }
         cv.notify_one();
-    
-        std::cout << "[debug: " << world.rank() << "] Slave rank: " << world.rank() << " sending message!" << std::endl;
-    
+        std::cout << "[debug: " << world.rank() << "] Slave node is ready for listen." << std::endl;
+        
         std::size_t received = 0l;
         while (true){
-            
+
             int data = 0;
-            
+
             while (queue.pop(data)) {
                 std::cout <<"[debug: " << world.rank() << "]: (received " << ++received << ") data: " << data << std::endl;
-                
+
                 {
                     std::stringstream ss;
                     ss << "Hello form Slave to: " << data << std::endl;
@@ -310,7 +316,7 @@ int main(int argc, const char* argv[]) {
                     mpi::request send_rq = world.isend(data, 0, _data);
                     send_rq.wait();
                 }
-            
+
                 data = 0;
             }
             std::this_thread::sleep_for(100ms);

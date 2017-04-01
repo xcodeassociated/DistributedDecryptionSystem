@@ -4,26 +4,26 @@
     <generated>
       <config projectName="DDS" targetName="gmock" />
       <config projectName="DDS" targetName="DDS" />
-      <config projectName="DDS" targetName="mvc" />
       <config projectName="DDS" targetName="SlaveNodeObject" />
+      <config projectName="DDS" targetName="mvc" />
       <config projectName="DDS" targetName="gtest" />
       <config projectName="DDS" targetName="gmock_main" />
       <config projectName="DDS" targetName="gtest_main" />
-      <config projectName="DDS" targetName="RunTests" />
       <config projectName="DDS" targetName="MasterNodeObject" />
+      <config projectName="DDS" targetName="RunTests" />
     </generated>
   </component>
-  <component name="CMakeSettings" AUTO_RELOAD="false" GENERATION_OPTIONS="-DARM=OFF -DCP=&quot;/home/jm/Desktop/_DDStoRPi&quot;" GENERATION_PASS_SYSTEM_ENVIRONMENT="true">
+  <component name="CMakeSettings" AUTO_RELOAD="false" GENERATION_OPTIONS="-DARM=ON -DO=&quot;3&quot; -DCP=&quot;/home/jm/Desktop/_DDStoRPi&quot;" GENERATION_PASS_SYSTEM_ENVIRONMENT="true">
     <ADDITIONAL_GENERATION_ENVIRONMENT>
       <envs />
     </ADDITIONAL_GENERATION_ENVIRONMENT>
   </component>
   <component name="ChangeListManager">
     <list default="true" id="071691d3-78a0-484b-bd43-ad617779ddda" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/DDS.iml" afterPath="$PROJECT_DIR$/.idea/DDS.iml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/CMakeLists.txt" afterPath="$PROJECT_DIR$/CMakeLists.txt" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/cxx_elements/main.cpp" afterPath="$PROJECT_DIR$/cxx_elements/main.cpp" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/cxx_tests/test_libs/googlemock/docs/DevGuide.md" afterPath="$PROJECT_DIR$/cxx_tests/test_libs/googlemock/docs/DevGuide.md" />
     </list>
     <ignored path="DDS.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -46,8 +46,18 @@
       <file leaf-file-name="CMakeLists.txt" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/CMakeLists.txt">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-2269">
-              <caret line="38" column="0" selection-start-line="38" selection-start-column="0" selection-end-line="38" selection-end-column="0" />
+            <state relative-caret-position="234">
+              <caret line="127" column="19" selection-start-line="127" selection-start-column="19" selection-end-line="127" selection-end-column="19" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="CMakeLists.txt" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/cxx_tests/CMakeLists.txt">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="126">
+              <caret line="7" column="29" selection-start-line="7" selection-start-column="29" selection-end-line="7" selection-end-column="29" />
               <folding />
             </state>
           </provider>
@@ -56,35 +66,12 @@
       <file leaf-file-name="main.cpp" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/cxx_elements/main.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="165">
-              <caret line="216" column="34" selection-start-line="216" selection-start-column="34" selection-end-line="216" selection-end-column="34" />
+            <state relative-caret-position="540">
+              <caret line="273" column="46" selection-start-line="273" selection-start-column="46" selection-end-line="273" selection-end-column="46" />
               <folding>
-                <element signature="e#0#19#0" expanded="true" />
-                <element signature="e#157#186#0" expanded="true" />
-                <element signature="e#592#648#0" expanded="true" />
+                <element signature="e#592#675#0" expanded="true" />
+                <element signature="e#723#3171#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="MasterMainClass_test.cpp" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/test_implementation/MasterMainClass_test.cpp">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="699">
-              <caret line="59" column="34" selection-start-line="59" selection-start-column="34" selection-end-line="59" selection-end-column="34" />
-              <folding>
-                <element signature="e#37#61#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="SlaveMainClass_test.cpp" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/test_implementation/SlaveMainClass_test.cpp">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="447">
-              <caret line="45" column="4" selection-start-line="45" selection-start-column="4" selection-end-line="45" selection-end-column="4" />
-              <folding />
             </state>
           </provider>
         </entry>
@@ -113,8 +100,8 @@
         <option value="$PROJECT_DIR$/cxx_elements/core_application/SlaveNode/MainClass/SlaveMainClass.hpp" />
         <option value="$PROJECT_DIR$/cxx_elements/core_application/SlaveNode/MainClass/SlaveMainClass.cpp" />
         <option value="$PROJECT_DIR$/cxx_tests/test_source/CMakeLists.txt" />
-        <option value="$PROJECT_DIR$/CMakeLists.txt" />
         <option value="$PROJECT_DIR$/cxx_elements/main.cpp" />
+        <option value="$PROJECT_DIR$/CMakeLists.txt" />
       </list>
     </option>
   </component>
@@ -716,7 +703,9 @@
       <workItem from="1487459464830" duration="28356000" />
       <workItem from="1488565469243" duration="3051000" />
       <workItem from="1488740228262" duration="9364000" />
-      <workItem from="1489576215654" duration="34754000" />
+      <workItem from="1489576215654" duration="40455000" />
+      <workItem from="1491051857391" duration="7166000" />
+      <workItem from="1491059813338" duration="2101000" />
     </task>
     <task id="LOCAL-00001" summary="Application architecture changed - there will be one application for master and slave nodes (they will be differ based on mpi rank)">
       <created>1487383024013</created>
@@ -774,7 +763,14 @@
       <option name="project" value="LOCAL" />
       <updated>1490545642667</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="ping pong works for local setup">
+      <created>1490556112888</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1490556112888</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TestHistory">
@@ -810,7 +806,7 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="90861000" />
+    <option name="totallyTimeSpent" value="105829000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="43" y="24" width="1877" height="1056" extended-state="6" />
@@ -818,13 +814,13 @@
     <layout>
       <window_info id="PlantUML" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32901832" sideWeight="0.5" order="12" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3279396" sideWeight="0.49808848" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.3279396" sideWeight="0.49808848" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="CMake" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3279396" sideWeight="0.49808848" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32831" sideWeight="0.5019115" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32901832" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32901832" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3279396" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19825232" sideWeight="0.5" order="1" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.20262152" sideWeight="0.5" order="1" side_tool="false" content_ui="combo" />
       <window_info id="LuaJ" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Tail" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
@@ -859,7 +855,8 @@
     <MESSAGE value="Boost::options has been added as well as boost::mpi example code has changed" />
     <MESSAGE value="Big project refactor - MVC removed instead introduced Master &amp; Slave Node Classes.&#10;MPI evn is set to work in multithreaded build" />
     <MESSAGE value="Working messages receiving in master." />
-    <option name="LAST_COMMIT_MESSAGE" value="Working messages receiving in master." />
+    <MESSAGE value="ping pong works for local setup" />
+    <option name="LAST_COMMIT_MESSAGE" value="ping pong works for local setup" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -868,14 +865,63 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/CMakeLists.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/CMakeLists.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="144">
+          <caret line="8" column="31" selection-start-line="8" selection-start-column="31" selection-end-line="8" selection-end-column="31" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/test_implementation/SlaveMainClass_test.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="324">
+          <caret line="18" column="44" selection-start-line="18" selection-start-column="44" selection-end-line="18" selection-end-column="44" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cxx_elements/CMakeLists.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/CMakeLists.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cxx_tests/CMakeLists.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/test_implementation/MasterMainClass_test.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="306">
+          <caret line="17" column="0" selection-start-line="17" selection-start-column="0" selection-end-line="17" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/cxx_elements/main.cpp">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="270">
           <caret line="15" column="1" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
           <folding>
-            <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#157#186#0" expanded="true" />
-            <element signature="e#592#648#0" expanded="true" />
+            <element signature="e#592#675#0" expanded="true" />
+            <element signature="e#723#3171#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -935,82 +981,13 @@
         <state relative-caret-position="270">
           <caret line="15" column="1" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
           <folding>
-            <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#157#186#0" expanded="true" />
-            <element signature="e#592#648#0" expanded="true" />
+            <element signature="e#592#675#0" expanded="true" />
+            <element signature="e#723#3171#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/CMakeLists.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/CMakeLists.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="144">
-          <caret line="8" column="31" selection-start-line="8" selection-start-column="31" selection-end-line="8" selection-end-column="31" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/test_implementation/SlaveMainClass_test.cpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="324">
-          <caret line="18" column="44" selection-start-line="18" selection-start-column="44" selection-end-line="18" selection-end-column="44" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_elements/CMakeLists.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/CMakeLists.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_tests/CMakeLists.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/test_implementation/MasterMainClass_test.cpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="306">
-          <caret line="17" column="0" selection-start-line="17" selection-start-column="0" selection-end-line="17" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_elements/main.cpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="270">
-          <caret line="15" column="1" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
-          <folding>
-            <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#157#186#0" expanded="true" />
-            <element signature="e#592#648#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/controller/Controller.cpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/controller/Controller.cpp" />
     <entry file="file://$PROJECT_DIR$/cxx_tests/test_libs/googlemock/make/Makefile">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="486">
@@ -1032,75 +1009,24 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/controller/Controller.hpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="180">
-          <caret line="10" column="11" selection-start-line="10" selection-start-column="11" selection-end-line="10" selection-end-column="11" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/model/Model.cpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/model/Model.hpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/controller/Controller.hpp" />
+    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/model/Model.cpp" />
+    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/model/Model.hpp" />
     <entry file="file://$PROJECT_DIR$/DDS_bash_loop.sh">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="180">
           <caret line="10" column="0" selection-start-line="10" selection-start-column="0" selection-end-line="10" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file:///usr/arm-boost/include/boost/mpi/environment.hpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="299">
-          <caret line="116" column="11" selection-start-line="116" selection-start-column="11" selection-end-line="116" selection-end-column="11" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/arm-boost/include/boost/mpi/communicator.hpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-2430">
-          <caret line="135" column="2" selection-start-line="135" selection-start-column="2" selection-end-line="135" selection-end-column="2" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/SlaveNode/MainClass/CMakeLists.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/MasterNode/MainClass/CMakeLists.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file:///usr/arm-boost/include/boost/mpi/environment.hpp" />
+    <entry file="file:///usr/arm-boost/include/boost/mpi/communicator.hpp" />
+    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/SlaveNode/MainClass/CMakeLists.txt" />
+    <entry file="file://$PROJECT_DIR$/cxx_elements/core_application/MasterNode/MainClass/CMakeLists.txt" />
     <entry file="file://$PROJECT_DIR$/cxx_elements/utilities/utils.hpp">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1128,19 +1054,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_tests/CMakeLists.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/mocks_headres/SlaveMainClass_mock.hpp">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="179">
           <caret line="10" column="32" selection-start-line="10" selection-start-column="32" selection-end-line="10" selection-end-column="32" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1148,12 +1065,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="198">
           <caret line="11" column="0" selection-start-line="11" selection-start-column="0" selection-end-line="11" selection-end-column="0" />
-          <folding>
-            <marker date="1490305549548" expanded="true" signature="121:282" ph="..." />
-            <marker date="1490305549548" expanded="true" signature="299:857" ph="{...}" />
-            <marker date="1490305549548" expanded="true" signature="363:849" ph="{...}" />
-            <marker date="1490305549548" expanded="true" signature="408:667" ph="{...}" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -1161,10 +1072,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="198">
           <caret line="11" column="23" selection-start-line="11" selection-start-column="23" selection-end-line="11" selection-end-column="23" />
-          <folding>
-            <marker date="1490306596774" expanded="true" signature="117:202" ph="{...}" />
-            <marker date="1490306596774" expanded="true" signature="150:194" ph="{...}" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -1172,7 +1079,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="108">
           <caret line="6" column="0" selection-start-line="6" selection-start-column="0" selection-end-line="8" selection-end-column="1" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1180,10 +1086,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="198">
           <caret line="11" column="23" selection-start-line="11" selection-start-column="23" selection-end-line="11" selection-end-column="23" />
-          <folding>
-            <marker date="1490306636446" expanded="true" signature="115:199" ph="{...}" />
-            <marker date="1490306636446" expanded="true" signature="147:191" ph="{...}" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -1191,7 +1093,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="90">
           <caret line="5" column="0" selection-start-line="5" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1199,24 +1100,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="90">
           <caret line="5" column="28" selection-start-line="5" selection-start-column="28" selection-end-line="5" selection-end-column="28" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/test_implementation/MasterMainClass_test.cpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="699">
-          <caret line="59" column="34" selection-start-line="59" selection-start-column="34" selection-end-line="59" selection-end-column="34" />
-          <folding>
-            <element signature="e#37#61#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/test_implementation/SlaveMainClass_test.cpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="447">
-          <caret line="45" column="4" selection-start-line="45" selection-start-column="4" selection-end-line="45" selection-end-column="4" />
           <folding />
         </state>
       </provider>
@@ -1233,7 +1116,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-397">
           <caret line="32" column="21" selection-start-line="32" selection-start-column="21" selection-end-line="32" selection-end-column="21" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1241,7 +1123,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="197">
           <caret line="1283" column="4" selection-start-line="1283" selection-start-column="4" selection-end-line="1283" selection-end-column="4" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1249,7 +1130,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-775">
           <caret line="31" column="21" selection-start-line="31" selection-start-column="21" selection-end-line="31" selection-end-column="21" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1257,34 +1137,54 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="197">
           <caret line="361" column="9" selection-start-line="361" selection-start-column="9" selection-end-line="361" selection-end-column="9" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/arm-boost/include/boost/lockfree/queue.hpp" />
+    <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/test_implementation/SlaveMainClass_test.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="447">
+          <caret line="45" column="4" selection-start-line="45" selection-start-column="4" selection-end-line="45" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cxx_tests/test_source/test_implementation/MasterMainClass_test.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="699">
+          <caret line="59" column="34" selection-start-line="59" selection-start-column="34" selection-end-line="59" selection-end-column="34" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/share/cmake-3.5/Modules/FindBoost.cmake">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="197">
+          <caret line="762" column="0" selection-start-line="762" selection-start-column="0" selection-end-line="762" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cxx_tests/CMakeLists.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="126">
+          <caret line="7" column="29" selection-start-line="7" selection-start-column="29" selection-end-line="7" selection-end-column="29" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/CMakeLists.txt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-2269">
-          <caret line="38" column="0" selection-start-line="38" selection-start-column="0" selection-end-line="38" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/arm-boost/include/boost/lockfree/queue.hpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-2509">
-          <caret line="360" column="9" selection-start-line="360" selection-start-column="9" selection-end-line="360" selection-end-column="9" />
+        <state relative-caret-position="234">
+          <caret line="127" column="19" selection-start-line="127" selection-start-column="19" selection-end-line="127" selection-end-column="19" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cxx_elements/main.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="165">
-          <caret line="216" column="34" selection-start-line="216" selection-start-column="34" selection-end-line="216" selection-end-column="34" />
+        <state relative-caret-position="540">
+          <caret line="273" column="46" selection-start-line="273" selection-start-column="46" selection-end-line="273" selection-end-column="46" />
           <folding>
-            <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#157#186#0" expanded="true" />
-            <element signature="e#592#648#0" expanded="true" />
+            <element signature="e#592#675#0" expanded="true" />
+            <element signature="e#723#3171#0" expanded="true" />
           </folding>
         </state>
       </provider>

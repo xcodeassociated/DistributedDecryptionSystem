@@ -26,26 +26,24 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     message(STATUS "Linux")
 
     if (ARM)
-        ## set optimization for ARM - to run faster on my own 'develop' cluster.
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-
-        ## armhf only configuration
-        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 
         set(CROSS_COMPILER_PATH /usr/bin/)
         set(TOOLCHAIN_PREFIX ${CROSS_COMPILER_PATH}arm-linux-gnueabihf)
         set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
         set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
 
-        set (CMAKE_PREFIX_PATH "/usr/arm-boost/")
-        set (CMAKE_PREFIX_PATH "/usr/arm-boost/include/")
-        set (CMAKE_PREFIX_PATH "/usr/arm-boost/lib")
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/")
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
 
-        set (CMAKE_PREFIX_PATH "/usr/arm-cryptopp/include")
-        set (CMAKE_PREFIX_PATH "/usr/arm-cryptopp/lib")
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/")
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/")
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/")
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/arm-linux-gnueabihf/")
 
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/cryptopp/")
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/crypto++/")
 
-        set (BOOST_ROOT "/usr/arm-boost/")
+        set (BOOST_ROOT "/home/jm/arm-linux-gnueabihf-pi/usr/")
         find_package(Boost 1.6.0 COMPONENTS mpi serialization REQUIRED)
         if(Boost_FOUND)
             message(STATUS "ARM_BOOST Found!")
@@ -53,28 +51,30 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             message(STATUS "ARM_Boost include: ${Boost_INCLUDE_DIRS}")
         endif()
 
-        set (CMAKE_PREFIX_PATH "/usr/arm-openmpi/")
-        set (CMAKE_PREFIX_PATH "/usr/arm-openmpi/include")
-        set (CMAKE_PREFIX_PATH "/usr/arm-openmpi/lib")
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/openmpi/")
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/openmpi/include/")
+        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/openmpi/lib/")
 
         find_package(MPI REQUIRED)
         if(MPI_FOUND)
             message(STATUS "ARM_MPI Found!")
         endif()
 
-        include_directories("/usr/arm-openmpi/include")
+        include_directories("/home/jm/arm-linux-gnueabihf-pi/usr/include/")
         include_directories(${MPI_INCLUDE_PATH})
         include_directories(${Boost_INCLUDE_DIRS})
-        include_directories("/usr/arm-cryptopp/include")
 
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ldl -fPIC -Wl,-rpath -Wl,/home/pi/.linuxbrew/opt/libevent/lib -Wl,-rpath -Wl,/home/pi/.linuxbrew/Cellar/open-mpi/1.10.2_1/lib -Wl,--enable-new-dtags -L/home/pi/.linuxbrew/Cellar/open-mpi/1.10.2_1/lib")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread ")
 
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/usr/arm-cryptopp/lib -lcryptopp")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/home/jm/arm-linux-gnueabihf-pi/lib/")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
+
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ldl -fPIC -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf/openmpi/lib -Wl,--enable-new-dtags -L/usr/lib/arm-linux-gnueabihf/openmpi/lib")
+
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf/")
 
-        ## to link shared library when running on cluster
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,/mpi/zzz")
-
+        # to link shared library when running on cluster
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,/mpi/DDS")
 
     else()
         ## amd64 only configuration
@@ -116,9 +116,11 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             message(STATUS "Crypto++ found!")
         endif()
 
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+
+
     endif()
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 endif()
 
@@ -158,12 +160,17 @@ add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 if (ARM)
     target_link_libraries(${PROJECT_NAME}
             ${MPI_LIBRARIES}
-            /usr/arm-boost/lib/libboost_mpi.so
-            /usr/arm-boost/lib/libboost_serialization.so
-            /usr/arm-boost/lib/libboost_program_options.so
-            /usr/arm-cryptopp/lib/libcrypto++.so.6
-            /usr/arm-cryptopp/lib/libcryptopp.so
-            pthread
+
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_mpi.so
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_serialization.so
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_program_options.so
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libcrypto++.so.6
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libcryptopp.so
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so.5
+            /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libudev.so.1
+            /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libpthread.so.0
+
             MasterNodeObject
             SlaveNodeObject)
 else()
