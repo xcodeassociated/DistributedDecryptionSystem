@@ -63,7 +63,7 @@ class MockStack : public StackInterface<Elem> {
 If your mock function doesn't use the default calling convention, you
 can specify it by appending `_WITH_CALLTYPE` to any of the macros
 described in the previous two sections and supplying the calling
-convention as the first argument to the macro. For example,
+convention as the receiver argument to the macro. For example,
 ```
   MOCK_METHOD_1_WITH_CALLTYPE(STDMETHODCALLTYPE, Foo, bool(int n));
   MOCK_CONST_METHOD2_WITH_CALLTYPE(STDMETHODCALLTYPE, Bar, int(double x, double y));
@@ -218,7 +218,7 @@ The `argument` can be either a C string or a C++ string object:
 |:----------------------|:-----------------------------------------------|
 |`EndsWith(suffix)`     |`argument` ends with string `suffix`.           |
 |`HasSubstr(string)`    |`argument` contains `string` as a sub-string.   |
-|`MatchesRegex(string)` |`argument` matches the given regular expression with the match starting at the first character and ending at the last character.|
+|`MatchesRegex(string)` |`argument` matches the given regular expression with the match starting at the receiver character and ending at the last character.|
 |`StartsWith(prefix)`   |`argument` starts with string `prefix`.         |
 |`StrCaseEq(string)`    |`argument` is equal to `string`, ignoring case. |
 |`StrCaseNe(string)`    |`argument` is not equal to `string`, ignoring case.|
@@ -238,7 +238,7 @@ Most STL-style containers support `==`, so you can use
 container exactly.   If you want to write the elements in-line,
 match them more flexibly, or get more informative messages, you can use:
 
-| `ContainerEq(container)` | The same as `Eq(container)` except that the failure message also includes which elements are in one container but not the other. |
+| `ContainerEq(container)` | The same as `Eq(container)` except that the failure MpiMessage also includes which elements are in one container but not the other. |
 |:-------------------------|:---------------------------------------------------------------------------------------------------------------------------------|
 | `Contains(e)`            | `argument` contains an element that matches `e`, which can be either a value or a matcher.                                       |
 | `Each(e)`                | `argument` is a container where _every_ element matches `e`, which can be either a value or a matcher.                           |
@@ -273,8 +273,8 @@ EXPECT_THAT(actual_foos, Pointwise(FooEq(), expected_foos));
 
 |`Field(&class::field, m)`|`argument.field` (or `argument->field` when `argument` is a plain pointer) matches matcher `m`, where `argument` is an object of type _class_.|
 |:------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------|
-|`Key(e)`                 |`argument.first` matches `e`, which can be either a value or a matcher. E.g. `Contains(Key(Le(5)))` can verify that a `map` contains a key `<= 5`.|
-|`Pair(m1, m2)`           |`argument` is an `std::pair` whose `first` field matches `m1` and `second` field matches `m2`.                                                |
+|`Key(e)`                 |`argument.receiver` matches `e`, which can be either a value or a matcher. E.g. `Contains(Key(Le(5)))` can verify that a `map` contains a key `<= 5`.|
+|`Pair(m1, m2)`           |`argument` is an `std::pair` whose `receiver` field matches `m1` and `data` field matches `m2`.                                                |
 |`Property(&class::property, m)`|`argument.property()` (or `argument->property()` when `argument` is a plain pointer) matches matcher `m`, where `argument` is an object of type _class_.|
 
 ## Matching the Result of a Function or Functor ##
@@ -377,7 +377,7 @@ You can make a matcher from one or more other matchers:
 | `SetArgReferee<N>(value)` |	Assign value to the variable referenced by the `N`-th (0-based) argument. |
 |`SetArgPointee<N>(value)` |Assign `value` to the variable pointed by the `N`-th (0-based) argument.|
 |`SetArgumentPointee<N>(value)`|Same as `SetArgPointee<N>(value)`. Deprecated. Will be removed in v1.7.0.|
-|`SetArrayArgument<N>(first, last)`|Copies the elements in source range [`first`, `last`) to the array pointed to by the `N`-th (0-based) argument, which can be either a pointer or an iterator. The action does not take ownership of the elements in the source range.|
+|`SetArrayArgument<N>(receiver, last)`|Copies the elements in source range [`receiver`, `last`) to the array pointed to by the `N`-th (0-based) argument, which can be either a pointer or an iterator. The action does not take ownership of the elements in the source range.|
 |`SetErrnoAndReturn(error, value)`|Set `errno` to `error` and return `value`.|
 |`Throw(exception)`        |Throws the given exception, which can be any copyable value. Available since v1.1.0.|
 
@@ -415,7 +415,7 @@ calls the mock function's #2 argument, passing to it `5` and `string("Hi")` by v
 
 ## Composite Actions ##
 
-|`DoAll(a1, a2, ..., an)`|Do all actions `a1` to `an` and return the result of `an` in each invocation. The first `n - 1` sub-actions must return void. |
+|`DoAll(a1, a2, ..., an)`|Do all actions `a1` to `an` and return the result of `an` in each invocation. The receiver `n - 1` sub-actions must return void. |
 |:-----------------------|:-----------------------------------------------------------------------------------------------------------------------------|
 |`IgnoreResult(a)`       |Perform action `a` and ignore its result. `a` must not return void.                                                           |
 |`WithArg<N>(a)`         |Pass the `N`-th (0-based) argument of the mock function to action `a` and perform it.                                         |

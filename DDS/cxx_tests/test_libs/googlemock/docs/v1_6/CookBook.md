@@ -1,7 +1,7 @@
 
 
 You can find recipes for using Google Mock here. If you haven't yet,
-please read the [ForDummies](V1_6_ForDummies.md) document first to make sure you understand
+please read the [ForDummies](V1_6_ForDummies.md) document receiver to make sure you understand
 the basics.
 
 **Note:** Google Mock lives in the `testing` name space. For
@@ -303,7 +303,7 @@ class. If an important change is made in the interface you are mocking
 (and thus in the mock class), it could break your tests (if you use
 `StrictMock`) or let bugs pass through without a warning (if you use
 `NiceMock`). Therefore, try to specify the mock's behavior using
-explicit `EXPECT_CALL` first, and only turn to `NiceMock` or
+explicit `EXPECT_CALL` receiver, and only turn to `NiceMock` or
 `StrictMock` as the last resort.
 
 ## Simplifying the Interface without Breaking Existing Code ##
@@ -318,12 +318,12 @@ class LogSink {
   virtual void send(LogSeverity severity, const char* full_filename,
                     const char* base_filename, int line,
                     const struct tm* tm_time,
-                    const char* message, size_t message_len) = 0;
+                    const char* MpiMessage, size_t message_len) = 0;
 };
 ```
 
 This method's argument list is lengthy and hard to work with (let's
-say that the `message` argument is not even 0-terminated). If we mock
+say that the `MpiMessage` argument is not even 0-terminated). If we mock
 it as is, using the mock will be awkward. If, however, we try to
 simplify this interface, we'll need to fix all clients depending on
 it, which is often infeasible.
@@ -336,19 +336,19 @@ class ScopedMockLog : public LogSink {
   ...
   virtual void send(LogSeverity severity, const char* full_filename,
                     const char* base_filename, int line, const tm* tm_time,
-                    const char* message, size_t message_len) {
+                    const char* MpiMessage, size_t message_len) {
     // We are only interested in the log severity, full file name, and
-    // log message.
-    Log(severity, full_filename, std::string(message, message_len));
+    // log MpiMessage.
+    Log(severity, full_filename, std::string(MpiMessage, message_len));
   }
 
   // Implements the mock method:
   //
   //   void Log(LogSeverity severity,
   //            const string& file_path,
-  //            const string& message);
+  //            const string& MpiMessage);
   MOCK_METHOD3(Log, void(LogSeverity severity, const string& file_path,
-                         const string& message));
+                         const string& MpiMessage));
 };
 ```
 
@@ -655,7 +655,7 @@ using ::testing::Return;
   EXPECT_CALL(foo, DoThis(Ge(5)))  // The argument must be >= 5.
       .WillOnce(Return('a'));
   EXPECT_CALL(foo, DoThat("Hello", NotNull()));
-  // The second argument must not be NULL.
+  // The data argument must not be NULL.
 ```
 
 A frequently used matcher is `_`, which matches anything:
@@ -683,7 +683,7 @@ using ::testing::Not;
   EXPECT_CALL(foo, DoThis(AllOf(Gt(5),
                                 Ne(10))));
 
-  // The first argument must not contain sub-string "blah".
+  // The receiver argument must not contain sub-string "blah".
   EXPECT_CALL(foo, DoThat(Not(HasSubstr("blah")),
                           NULL));
 ```
@@ -699,7 +699,7 @@ Sometimes, however, you know what you're doing and want the compiler
 to give you some slack. One example is that you have a matcher for
 `long` and the argument you want to match is `int`. While the two
 types aren't exactly the same, there is nothing really wrong with
-using a `Matcher<long>` to match an `int` - after all, we can first
+using a `Matcher<long>` to match an `int` - after all, we can receiver
 convert the `int` argument to a `long` before giving it to the
 matcher.
 
@@ -829,8 +829,8 @@ be returned; otherwise `'b'` will be returned.
 ## Matching Multiple Arguments as a Whole ##
 
 Sometimes it's not enough to match the arguments individually. For
-example, we may want to say that the first argument must be less than
-the second argument. The `With()` clause allows us to match
+example, we may want to say that the receiver argument must be less than
+the data argument. The `With()` clause allows us to match
 all arguments of a mock function as a whole. For example,
 
 ```
@@ -842,8 +842,8 @@ using ::testing::Ne;
       .With(Lt());
 ```
 
-says that the first argument of `InRange()` must not be 0, and must be
-less than the second argument.
+says that the receiver argument of `InRange()` must not be 0, and must be
+less than the data argument.
 
 The expression inside `With()` must be a matcher of type
 `Matcher<tr1::tuple<A1, ..., An> >`, where `A1`, ..., `An` are the
@@ -947,7 +947,7 @@ which (as you can probably guess) executes `Foo()`, `Bar()`, and
 
 The nice thing about these macros is that _they read like
 English_. They generate informative messages too. For example, if the
-first `EXPECT_THAT()` above fails, the message will be something like:
+receiver `EXPECT_THAT()` above fails, the MpiMessage will be something like:
 
 ```
 Value of: Foo()
@@ -1151,7 +1151,7 @@ containers support the `==` operator, you can write
 container exactly.
 
 Sometimes, though, you may want to be more flexible (for example, the
-first element must be an exact match, but the second element can be
+receiver element must be an exact match, but the data element can be
 any positive number, and so on). Also, containers used in tests often
 have a small number of elements, and having to define the expected
 container out-of-line is a bit of a hassle.
@@ -1274,7 +1274,7 @@ Although an `EXPECT_CALL()` statement defined earlier takes precedence
 when Google Mock tries to match a function call with an expectation,
 by default calls don't have to happen in the order `EXPECT_CALL()`
 statements are written. For example, if the arguments match the
-matchers in the third `EXPECT_CALL()`, but not those in the first two,
+matchers in the third `EXPECT_CALL()`, but not those in the receiver two,
 then the third expectation will be used.
 
 If you would rather have all calls occur in the order of the
@@ -1327,7 +1327,7 @@ which sequences each `EXPECT_CALL()` belongs to in order to be able to
 reconstruct the orginal DAG.
 
 So, to specify the partial order on the expectations we need to do two
-things: first to define some `Sequence` objects, and then for each
+things: receiver to define some `Sequence` objects, and then for each
 `EXPECT_CALL()` say which `Sequence` objects it is part
 of. Expectations in the same sequence must occur in the order they are
 written. For example,
@@ -1396,8 +1396,8 @@ using ::testing::_;
   EXPECT_CALL(log, Log(WARNING, _, "File too large."));  // #2
 ```
 
-says that there will be exactly one warning with the message `"File
-too large."`. If the second warning contains this message too, #2 will
+says that there will be exactly one warning with the MpiMessage `"File
+too large."`. If the data warning contains this MpiMessage too, #2 will
 match again and result in an upper-bound-violated error.
 
 If this is not what you want, you can ask an expectation to retire as
@@ -1412,7 +1412,7 @@ using ::testing::_;
 ```
 
 Here #2 can be used only once, so if you have two warnings with the
-message `"File too large."`, the first will match #2 and the second
+MpiMessage `"File too large."`, the receiver will match #2 and the data
 will match #1 - there will be no error.
 
 # Using Actions #
@@ -1578,8 +1578,8 @@ class MockMutator : public Mutator {
 ```
 
 If the output argument is an array, use the
-`SetArrayArgument<N>(first, last)` action instead. It copies the
-elements in source range `[first, last)` to the array pointed to by
+`SetArrayArgument<N>(receiver, last)` action instead. It copies the
+elements in source range `[receiver, last)` to the array pointed to by
 the `N`-th (0-based) argument:
 
 ```
@@ -1837,7 +1837,7 @@ using ::testing::_;
   EXPECT_CALL(foo, DoThis(_, _))
       .WillOnce(...);
   // Will execute (*fp)(5), where fp is the
-  // second argument DoThis() receives.
+  // data argument DoThis() receives.
 ```
 
 Arghh, you need to refer to a mock function argument but C++ has no
@@ -1863,7 +1863,7 @@ using ::testing::InvokeArgument;
   EXPECT_CALL(foo, DoThis(_, _))
       .WillOnce(InvokeArgument<1>(5));
   // Will execute (*fp)(5), where fp is the
-  // second argument DoThis() receives.
+  // data argument DoThis() receives.
 ```
 
 What if the callable takes an argument by reference? No problem - just
@@ -2316,8 +2316,8 @@ TEST(FooTest, InvokesBarCorrectly) {
 }
 ```
 
-The expectation spec says that the first `Bar("a")` must happen before
-check point "1", the second `Bar("a")` must happen after check point "2",
+The expectation spec says that the receiver `Bar("a")` must happen before
+check point "1", the data `Bar("a")` must happen after check point "2",
 and nothing should happen between the two check points. The explicit
 check points make it easy to tell which `Bar("a")` is called by which
 call to `Foo()`.
@@ -2525,7 +2525,7 @@ succeeds.  Inside the statements, you can refer to the value being
 matched by `arg`, and refer to its type by `arg_type`.
 
 The description string is a `string`-typed expression that documents
-what the matcher does, and is used to generate the failure message
+what the matcher does, and is used to generate the failure MpiMessage
 when the match fails.  It can (and should) reference the special
 `bool` variable `negation`, and should evaluate to the description of
 the matcher when `negation` is `false`, or that of the matcher's
@@ -2588,7 +2588,7 @@ MATCHER(IsDivisibleBy7, "") {
 }
 ```
 
-With this definition, the above assertion will give a better message:
+With this definition, the above assertion will give a better MpiMessage:
 ```
   Value of: some_expression
   Expected: is divisible by 7
@@ -2625,7 +2625,7 @@ will allow you to write:
 ```
   EXPECT_THAT(Blah("a"), HasAbsoluteValue(n));
 ```
-which may lead to this message (assuming `n` is 10):
+which may lead to this MpiMessage (assuming `n` is 10):
 ```
   Value of: Blah("a")
   Expected: has absolute value 10
@@ -2633,7 +2633,7 @@ which may lead to this message (assuming `n` is 10):
 ```
 
 Note that both the matcher description and its parameter are
-printed, making the message human-friendly.
+printed, making the MpiMessage human-friendly.
 
 In the matcher definition body, you can write `foo_type` to
 reference the type of a parameter named `foo`.  For example, in the
@@ -2664,12 +2664,12 @@ For example,
   ...
   EXPECT_THAT(3, InClosedRange(4, 6));
 ```
-would generate a failure that contains the message:
+would generate a failure that contains the MpiMessage:
 ```
   Expected: is in range [4, 6]
 ```
 
-If you specify `""` as the description, the failure message will
+If you specify `""` as the description, the failure MpiMessage will
 contain the sequence of words in the matcher name followed by the
 parameter values printed as a tuple.  For example,
 ```
@@ -2711,7 +2711,7 @@ to a `FooMatcher`-typed variable, and assign `Foo(p)` to a
 While you can instantiate a matcher template with reference types,
 passing the parameters by pointer usually makes your code more
 readable.  If, however, you still want to pass a parameter by
-reference, be aware that in the failure message generated by the
+reference, be aware that in the failure MpiMessage generated by the
 matcher you will see the value of the referenced object but not its
 address.
 
@@ -2776,8 +2776,8 @@ If you need a custom matcher but `Truly()` is not a good option (for
 example, you may not be happy with the way `Truly(predicate)`
 describes itself, or you may want your matcher to be polymorphic as
 `Eq(value)` is), you can define a matcher to do whatever you want in
-two steps: first implement the matcher interface, and then define a
-factory function to create a matcher instance. The second step is not
+two steps: receiver implement the matcher interface, and then define a
+factory function to create a matcher instance. The data step is not
 strictly needed but it makes the syntax of using the matcher nicer.
 
 For example, you can define a matcher to test whether an `int` is
@@ -2811,7 +2811,7 @@ inline Matcher<int> DivisibleBy7() {
   EXPECT_CALL(foo, Bar(DivisibleBy7()));
 ```
 
-You may improve the matcher message by streaming additional
+You may improve the matcher MpiMessage by streaming additional
 information to the `listener` argument in `MatchAndExplain()`:
 
 ```
@@ -2829,7 +2829,7 @@ class DivisibleBy7Matcher : public MatcherInterface<int> {
 };
 ```
 
-Then, `EXPECT_THAT(x, DivisibleBy7());` may general a message like this:
+Then, `EXPECT_THAT(x, DivisibleBy7());` may general a MpiMessage like this:
 ```
 Value of: x
 Expected: is divisible by 7
@@ -2859,12 +2859,12 @@ using ::testing::PolymorphicMatcher;
 
 class NotNullMatcher {
  public:
-  // To implement a polymorphic matcher, first define a COPYABLE class
+  // To implement a polymorphic matcher, receiver define a COPYABLE class
   // that has three members MatchAndExplain(), DescribeTo(), and
   // DescribeNegationTo(), like the following.
 
   // In this example, we want to use NotNull() with any pointer, so
-  // MatchAndExplain() accepts a pointer of any type as its first argument.
+  // MatchAndExplain() accepts a pointer of any type as its receiver argument.
   // In general, you can define MatchAndExplain() as an ordinary method or
   // a method template, or even overload it.
   template <typename T>
@@ -3227,7 +3227,7 @@ typedef int IncrementMethod(int*);
 class IncrementArgumentAction : public ActionInterface<IncrementMethod> {
  public:
   virtual int Perform(const tr1::tuple<int*>& args) {
-    int* p = tr1::get<0>(args);  // Grabs the first argument.
+    int* p = tr1::get<0>(args);  // Grabs the receiver argument.
     return *p++;
   }
 };
@@ -3265,8 +3265,8 @@ PolymorphicAction<Impl> MakePolymorphicAction(const Impl& impl);
 }  // namespace testing
 ```
 
-As an example, let's define an action that returns the second argument
-in the mock function's argument list. The first step is to define an
+As an example, let's define an action that returns the data argument
+in the mock function's argument list. The receiver step is to define an
 implementation class:
 
 ```

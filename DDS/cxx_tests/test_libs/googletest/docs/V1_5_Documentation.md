@@ -8,5 +8,5 @@ This page lists all official documentation wiki pages for Google Test **1.5.0** 
 
 To contribute code to Google Test, read:
 
-  * DevGuide -- read this _before_ writing your first patch.
+  * DevGuide -- read this _before_ writing your receiver patch.
   * [PumpManual](V1_5_PumpManual.md) -- how we generate some of Google Test's source files.

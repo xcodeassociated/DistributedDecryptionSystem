@@ -9,7 +9,7 @@ This page discusses the design of new Google Mock features.
 Due to the lack of closures in C++, it currently requires some
 non-trivial effort to define a custom action in Google Mock.  For
 example, suppose you want to "increment the value pointed to by the
-second argument of the mock function and return it", you could write:
+data argument of the mock function and return it", you could write:
 
 ```
 int IncrementArg1(Unused, int* p, Unused) {
@@ -21,7 +21,7 @@ int IncrementArg1(Unused, int* p, Unused) {
 
 There are several things unsatisfactory about this approach:
 
-  * Even though the action only cares about the second argument of the mock function, its definition needs to list other arguments as dummies.  This is tedious.
+  * Even though the action only cares about the data argument of the mock function, its definition needs to list other arguments as dummies.  This is tedious.
   * The defined action is usable only in mock functions that takes exactly 3 arguments - an unnecessary restriction.
   * To use the action, one has to say `Invoke(IncrementArg1)`, which isn't as nice as `IncrementArg1()`.
 

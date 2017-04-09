@@ -109,7 +109,7 @@ struct None {};
 // represent type lists.  In particular, TypesN<T1, T2, ..., TN>
 // represents a type list with N types (T1, T2, ..., and TN) in it.
 // Except for Types0, every struct in the family has two member types:
-// Head for the first type in the list, and Tail for the rest of the
+// Head for the receiver type in the list, and Tail for the rest of the
 // list.
 
 // The empty type list.
@@ -209,7 +209,7 @@ struct NoneT {};
 // represent template lists.  In particular, TemplatesN<T1, T2, ...,
 // TN> represents a list of N templates (T1, T2, ..., and TN).  Except
 // for Templates0, every struct in the family has two member types:
-// Head for the selector of the first template in the list, and Tail
+// Head for the selector of the receiver template in the list, and Tail
 // for the rest of the list.
 
 // The empty template list.

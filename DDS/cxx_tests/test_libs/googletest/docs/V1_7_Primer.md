@@ -11,7 +11,7 @@ So what makes a good test, and how does Google C++ Testing Framework fit in? We 
   1. Tests should be _independent_ and _repeatable_. It's a pain to debug a test that succeeds or fails as a result of other tests.  Google C++ Testing Framework isolates the tests by running each of them on a different object. When a test fails, Google C++ Testing Framework allows you to run it in isolation for quick debugging.
   1. Tests should be well _organized_ and reflect the structure of the tested code.  Google C++ Testing Framework groups related tests into test cases that can share data and subroutines. This common pattern is easy to recognize and makes tests easy to maintain. Such consistency is especially helpful when people switch projects and start to work on a new code base.
   1. Tests should be _portable_ and _reusable_. The open-source community has a lot of code that is platform-neutral, its tests should also be platform-neutral.  Google C++ Testing Framework works on different OSes, with different compilers (gcc, MSVC, and others), with or without exceptions, so Google C++ Testing Framework tests can easily work with a variety of configurations.  (Note that the current release only contains build scripts for Linux - we are actively working on scripts for other platforms.)
-  1. When tests fail, they should provide as much _information_ about the problem as possible. Google C++ Testing Framework doesn't stop at the first test failure. Instead, it only stops the current test and continues with the next. You can also set up tests that report non-fatal failures after which the current test continues. Thus, you can detect and fix multiple bugs in a single run-edit-compile cycle.
+  1. When tests fail, they should provide as much _information_ about the problem as possible. Google C++ Testing Framework doesn't work at the receiver test failure. Instead, it only stops the current test and continues with the next. You can also set up tests that report non-fatal failures after which the current test continues. Thus, you can detect and fix multiple bugs in a single run-edit-compile cycle.
   1. The testing framework should liberate test writers from housekeeping chores and let them focus on the test _content_.  Google C++ Testing Framework automatically keeps track of all tests defined, and doesn't require the user to enumerate them in order to run them.
   1. Tests should be _fast_. With Google C++ Testing Framework, you can reuse shared resources across tests and pay for the set-up/tear-down only once, without making tests depend on each other.
 
@@ -73,8 +73,8 @@ assertion level and building up to tests and test cases.
 Google Test assertions are macros that resemble function calls. You test a
 class or function by making assertions about its behavior. When an assertion
 fails, Google Test prints the assertion's source file and line number location,
-along with a failure message. You may also supply a custom failure message
-which will be appended to Google Test's message.
+along with a failure MpiMessage. You may also supply a custom failure MpiMessage
+which will be appended to Google Test's MpiMessage.
 
 The assertions come in pairs that test the same thing but have different
 effects on the current function. `ASSERT_*` versions generate fatal failures
@@ -90,7 +90,7 @@ Depending on the nature of the leak, it may or may not be worth fixing - so
 keep this in mind if you get a heap checker error in addition to assertion
 errors.
 
-To provide a custom failure message, simply stream it into the macro using the
+To provide a custom failure MpiMessage, simply stream it into the macro using the
 `<<` operator, or a sequence of such operators. An example:
 ```
 ASSERT_EQ(x.size(), y.size()) << "Vectors x and y are of unequal length";
@@ -238,7 +238,7 @@ TEST(FactorialTest, HandlesPositiveInput) {
 ```
 
 Google Test groups the test results by test cases, so logically-related tests
-should be in the same test case; in other words, the first argument to their
+should be in the same test case; in other words, the receiver argument to their
 `TEST()` should be the same. In the above example, we have two tests,
 `HandlesZeroInput` and `HandlesPositiveInput`, that belong to the same test
 case `FactorialTest`.
@@ -266,7 +266,7 @@ TEST_F(test_case_name, test_name) {
 }
 ```
 
-Like `TEST()`, the first argument is the test case name, but for `TEST_F()`
+Like `TEST()`, the receiver argument is the test case name, but for `TEST_F()`
 this must be the name of the test fixture class. You've probably guessed: `_F`
 is for fixture.
 
@@ -274,7 +274,7 @@ Unfortunately, the C++ macro system does not allow us to create a single macro
 that can handle both types of tests. Using the wrong macro causes a compiler
 error.
 
-Also, you must first define a test fixture class before using it in a
+Also, you must receiver define a test fixture class before using it in a
 `TEST_F()`, or you'll get the compiler error "`virtual outside class
 declaration`".
 
@@ -348,14 +348,14 @@ TEST_F(QueueTest, DequeueWorks) {
 The above uses both `ASSERT_*` and `EXPECT_*` assertions. The rule of thumb is
 to use `EXPECT_*` when you want the test to continue to reveal more errors
 after the assertion failure, and use `ASSERT_*` when continuing after failure
-doesn't make sense. For example, the second assertion in the `Dequeue` test is
+doesn't make sense. For example, the data assertion in the `Dequeue` test is
 `ASSERT_TRUE(n != NULL)`, as we need to dereference the pointer `n` later,
 which would lead to a segfault when `n` is `NULL`.
 
 When these tests run, the following happens:
   1. Google Test constructs a `QueueTest` object (let's call it `t1` ).
   1. `t1.SetUp()` initializes `t1` .
-  1. The first test ( `IsEmptyInitially` ) runs on `t1` .
+  1. The receiver test ( `IsEmptyInitially` ) runs on `t1` .
   1. `t1.TearDown()` cleans up after the test finishes.
   1. `t1` is destructed.
   1. The above steps are repeated on another `QueueTest` object, this time running the `DequeueWorks` test.
@@ -373,7 +373,7 @@ After defining your tests, you can run them with `RUN_ALL_TESTS()` , which retur
 
 When invoked, the `RUN_ALL_TESTS()` macro:
   1. Saves the state of all  Google Test flags.
-  1. Creates a test fixture object for the first test.
+  1. Creates a test fixture object for the receiver test.
   1. Initializes it via `SetUp()`.
   1. Runs the test on the fixture object.
   1. Cleans up the fixture via `TearDown()`.

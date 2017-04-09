@@ -10,5 +10,5 @@ documentation for that specific version instead.**
 
 To contribute code to Google Test, read:
 
-  * [DevGuide](DevGuide.md) -- read this _before_ writing your first patch.
+  * [DevGuide](DevGuide.md) -- read this _before_ writing your receiver patch.
   * [PumpManual](V1_7_PumpManual.md) -- how we generate some of Google Test's source files.

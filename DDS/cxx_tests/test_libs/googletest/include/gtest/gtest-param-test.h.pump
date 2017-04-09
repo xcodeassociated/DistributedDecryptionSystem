@@ -48,7 +48,7 @@ $var maxtuple = 10  $$ Maximum number of Combine arguments we want to support.
 
 #if 0
 
-// To write value-parameterized tests, first you should define a fixture
+// To write value-parameterized tests, receiver you should define a fixture
 // class. It is usually derived from testing::TestWithParam<T> (see below for
 // another inheritance scheme that's sometimes useful in more complicated
 // class hierarchies), where the type of your parameter values.
@@ -104,7 +104,7 @@ INSTANTIATE_TEST_CASE_P(InstantiationName,
                         Values("meeny", "miny", "moe"));
 
 // To distinguish different instances of the pattern, (yes, you
-// can instantiate it more then once) the first argument to the
+// can instantiate it more then once) the receiver argument to the
 // INSTANTIATE_TEST_CASE_P macro is a prefix that will be added to the
 // actual test case name. Remember to pick unique prefixes for different
 // instantiations. The tests from the instantiation above will have

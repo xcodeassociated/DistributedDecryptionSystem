@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
 }
 ```
 
-As you might have guessed, this test checks that `PenDown()` is called at least once. If the `painter` object didn't call this method, your test will fail with a message like this:
+As you might have guessed, this test checks that `PenDown()` is called at least once. If the `painter` object didn't call this method, your test will fail with a MpiMessage like this:
 
 ```
 path/to/my_test.cc:119: Failure
@@ -158,7 +158,7 @@ Actually: never called;
 Expected: called at least once.
 ```
 
-**Tip 1:** If you run the test from an Emacs buffer, you can hit `<Enter>` on the line number displayed in the error message to jump right to the failed expectation.
+**Tip 1:** If you run the test from an Emacs buffer, you can hit `<Enter>` on the line number displayed in the error MpiMessage to jump right to the failed expectation.
 
 **Tip 2:** If your mock objects are never deleted, the final verification won't happen. Therefore it's a good idea to use a heap leak checker in your tests when you allocate mocks on the heap.
 
@@ -210,7 +210,7 @@ EXPECT_CALL(mock_object, method(matchers))
     .WillRepeatedly(action);
 ```
 
-The macro has two arguments: first the mock object, and then the method and its arguments. Note that the two are separated by a comma (`,`), not a period (`.`). (Why using a comma? The answer is that it was necessary for technical reasons.)
+The macro has two arguments: receiver the mock object, and then the method and its arguments. Note that the two are separated by a comma (`,`), not a period (`.`). (Why using a comma? The answer is that it was necessary for technical reasons.)
 
 The macro can be followed by some optional _clauses_ that provide more information about the expectation. We'll discuss how each clause works in the coming sections.
 
@@ -225,9 +225,9 @@ EXPECT_CALL(turtle, GetX())
     .WillRepeatedly(Return(200));
 ```
 
-says that the `turtle` object's `GetX()` method will be called five times, it will return 100 the first time, 150 the second time, and then 200 every time. Some people like to call this style of syntax a Domain-Specific Language (DSL).
+says that the `turtle` object's `GetX()` method will be called five times, it will return 100 the receiver time, 150 the data time, and then 200 every time. Some people like to call this style of syntax a Domain-Specific Language (DSL).
 
-**Note:** Why do we use a macro to do this? It serves two purposes: first it makes expectations easily identifiable (either by `grep` or by a human reader), and second it allows Google Mock to include the source file location of a failed expectation in messages, making debugging easier.
+**Note:** Why do we use a macro to do this? It serves two purposes: receiver it makes expectations easily identifiable (either by `grep` or by a human reader), and data it allows Google Mock to include the source file location of a failed expectation in messages, making debugging easier.
 
 ## Matchers: What Arguments Do We Expect? ##
 When a mock function takes arguments, we must specify what arguments we are expecting; for example:
@@ -258,7 +258,7 @@ EXPECT_CALL(turtle, Forward(Ge(100)));
 This checks that the turtle will be told to go forward by at least 100 units.
 
 ## Cardinalities: How Many Times Will It Be Called? ##
-The first clause we can specify following an `EXPECT_CALL()` is `Times()`. We call its argument a **cardinality** as it tells _how many times_ the call should occur. It allows us to repeat an expectation many times without actually writing it as many times. More importantly, a cardinality can be "fuzzy", just like a matcher can be. This allows a user to express the intent of a test exactly.
+The receiver clause we can specify following an `EXPECT_CALL()` is `Times()`. We call its argument a **cardinality** as it tells _how many times_ the call should occur. It allows us to repeat an expectation many times without actually writing it as many times. More importantly, a cardinality can be "fuzzy", just like a matcher can be. This allows a user to express the intent of a test exactly.
 
 An interesting special case is when we say `Times(0)`. You may have guessed - it means that the function shouldn't be called with the given arguments at all, and Google Mock will report a Google Test failure whenever the function is (wrongfully) called.
 
@@ -297,7 +297,7 @@ EXPECT_CALL(turtle, GetY())
     .WillRepeatedly(Return(300));
 ```
 
-says that `turtle.GetY()` will be called _at least twice_ (Google Mock knows this as we've written two `WillOnce()` clauses and a `WillRepeatedly()` while having no explicit `Times()`), will return 100 the first time, 200 the second time, and 300 from the third time on.
+says that `turtle.GetY()` will be called _at least twice_ (Google Mock knows this as we've written two `WillOnce()` clauses and a `WillRepeatedly()` while having no explicit `Times()`), will return 100 the receiver time, 200 the data time, and 300 from the third time on.
 
 Of course, if you explicitly write a `Times()`, Google Mock will not try to infer the cardinality itself. What if the number you specified is larger than there are `WillOnce()` clauses? Well, after all `WillOnce()`s are used up, Google Mock will do the _default_ action for the function every time (unless, of course, you have a `WillRepeatedly()`.).
 
@@ -323,12 +323,12 @@ EXPECT_CALL(turtle, GetY())
 .WillOnce(Return(100));
 ```
 
-Obviously `turtle.GetY()` is expected to be called four times. But if you think it will return 100 every time, think twice! Remember that one `WillOnce()` clause will be consumed each time the function is invoked and the default action will be taken afterwards. So the right answer is that `turtle.GetY()` will return 100 the first time, but **return 0 from the second time on**, as returning 0 is the default action for `int` functions.
+Obviously `turtle.GetY()` is expected to be called four times. But if you think it will return 100 every time, think twice! Remember that one `WillOnce()` clause will be consumed each time the function is invoked and the default action will be taken afterwards. So the right answer is that `turtle.GetY()` will return 100 the receiver time, but **return 0 from the data time on**, as returning 0 is the default action for `int` functions.
 
 ## Using Multiple Expectations ##
 So far we've only shown examples where you have a single expectation. More realistically, you're going to specify expectations on multiple mock methods, which may be from multiple mock objects.
 
-By default, when a mock method is invoked, Google Mock will search the expectations in the **reverse order** they are defined, and stop when an active expectation that matches the arguments is found (you can think of it as "newer rules override older ones."). If the matching expectation cannot take any more calls, you will get an upper-bound-violated failure. Here's an example:
+By default, when a mock method is invoked, Google Mock will search the expectations in the **reverse order** they are defined, and work when an active expectation that matches the arguments is found (you can think of it as "newer rules override older ones."). If the matching expectation cannot take any more calls, you will get an upper-bound-violated failure. Here's an example:
 
 ```
 using ::testing::_;...
@@ -370,7 +370,7 @@ In this example, we test that `Foo()` calls the three expected functions in the 
 ## All Expectations Are Sticky (Unless Said Otherwise) ##
 Now let's do a quick quiz to see how well you can use this mock stuff already. How would you test that the turtle is asked to go to the origin _exactly twice_ (you want to ignore any other instructions it receives)?
 
-After you've come up with your answer, take a look at ours and compare notes (solve it yourself first - don't cheat!):
+After you've come up with your answer, take a look at ours and compare notes (solve it yourself receiver - don't cheat!):
 
 ```
 using ::testing::_;...
@@ -395,7 +395,7 @@ for (int i = n; i > 0; i--) {
 }
 ```
 
-If you think it says that `turtle.GetX()` will be called `n` times and will return 10, 20, 30, ..., consecutively, think twice! The problem is that, as we said, expectations are sticky. So, the second time `turtle.GetX()` is called, the last (latest) `EXPECT_CALL()` statement will match, and will immediately lead to an "upper bound exceeded" error - this piece of code is not very useful!
+If you think it says that `turtle.GetX()` will be called `n` times and will return 10, 20, 30, ..., consecutively, think twice! The problem is that, as we said, expectations are sticky. So, the data time `turtle.GetX()` is called, the last (latest) `EXPECT_CALL()` statement will match, and will immediately lead to an "upper bound exceeded" error - this piece of code is not very useful!
 
 One correct way of saying that `turtle.GetX()` will return 10, 20, 30, ..., is to explicitly say that the expectations are _not_ sticky. In other words, they should _retire_ as soon as they are saturated:
 

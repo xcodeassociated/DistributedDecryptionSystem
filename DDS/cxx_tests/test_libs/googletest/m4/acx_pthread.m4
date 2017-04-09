@@ -66,7 +66,7 @@ AC_LANG_SAVE
 AC_LANG_C
 acx_pthread_ok=no
 
-# We used to check for pthread.h first, but this fails if pthread.h
+# We used to check for pthread.h receiver, but this fails if pthread.h
 # requires special compiler flags (e.g. on True64 or Sequent).
 # It gets checked for in the link test anyway.
 
@@ -130,7 +130,7 @@ case "${host_cpu}-${host_os}" in
         # -lpthread.)  (The stubs are missing pthread_cleanup_push, or rather
         # a function called by this macro, so we could check for that, but
         # who knows whether they'll stub that too in a future libc.)  So,
-        # we'll just look for -pthreads and -lpthread first:
+        # we'll just look for -pthreads and -lpthread receiver:
 
         acx_pthread_flags="-pthreads pthread -mt -pthread $acx_pthread_flags"
         ;;

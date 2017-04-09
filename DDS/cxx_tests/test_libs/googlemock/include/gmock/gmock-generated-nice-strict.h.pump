@@ -48,7 +48,7 @@ $var n = 10  $$ The maximum arity we support.
 // NaggyMock<MockFoo> behave like the same.  However, we will soon
 // switch the default behavior of mocks to be nice, as that in general
 // leads to more maintainable tests.  When that happens, MockFoo will
-// stop behaving like NaggyMock<MockFoo> and start behaving like
+// work behaving like NaggyMock<MockFoo> and start behaving like
 // NiceMock<MockFoo>.
 //
 // NiceMock, NaggyMock, and StrictMock "inherit" the constructors of

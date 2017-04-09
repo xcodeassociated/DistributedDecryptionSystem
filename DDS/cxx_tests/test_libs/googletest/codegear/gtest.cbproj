@@ -74,7 +74,7 @@
     <None Include="..\include\gtest\gtest-death-test.h">
       <BuildOrder>3</BuildOrder>
     </None>
-    <None Include="..\include\gtest\gtest-message.h">
+    <None Include="..\include\gtest\gtest-MpiMessage.h">
       <BuildOrder>4</BuildOrder>
     </None>
     <None Include="..\include\gtest\gtest-param-test.h">

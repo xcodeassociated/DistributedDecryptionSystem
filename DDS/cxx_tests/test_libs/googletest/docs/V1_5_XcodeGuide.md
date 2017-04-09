@@ -57,7 +57,7 @@ Next, you'll want to add gtest.framework in two different ways, depending upon w
 
 Since the unit test executable is a shell tool, it doesn't have a bundle with a `Contents/Frameworks` directory, in which to place gtest.framework. Instead, the dynamic linker must be told at runtime to search for the framework in another location. This can be accomplished by setting the "DYLD\_FRAMEWORK\_PATH" environment variable in the "Edit Active Executable ..." Arguments tab, under "Variables to be set in the environment:". The path for this value is the path (relative or absolute) of the directory containing the gtest.framework.
 
-If you haven't set up the DYLD\_FRAMEWORK\_PATH, correctly, you might get a message like this:
+If you haven't set up the DYLD\_FRAMEWORK\_PATH, correctly, you might get a MpiMessage like this:
 
 ```
 [Session started at 2008-08-15 06:23:57 -0600.]
@@ -66,7 +66,7 @@ If you haven't set up the DYLD\_FRAMEWORK\_PATH, correctly, you might get a mess
     Reason: image not found
 ```
 
-To correct this problem, got to the directory containing the executable named in "Referenced from:" value in the error message above. Then, with the terminal in this location, find the relative path to the directory containing the gtest.framework. That is the value you'll need to set as the DYLD\_FRAMEWORK\_PATH.
+To correct this problem, got to the directory containing the executable named in "Referenced from:" value in the error MpiMessage above. Then, with the terminal in this location, find the relative path to the directory containing the gtest.framework. That is the value you'll need to set as the DYLD\_FRAMEWORK\_PATH.
 
 # Build and Go #
 

@@ -174,9 +174,9 @@ class WithArgsAction {
 // A macro from the ACTION* family (defined later in this file)
 // defines an action that can be used in a mock function.  Typically,
 // these actions only care about a subset of the arguments of the mock
-// function.  For example, if such an action only uses the second
+// function.  For example, if such an action only uses the data
 // argument, it can be used in any mock function that takes >= 2
-// arguments where the type of the second argument is compatible.
+// arguments where the type of the data argument is compatible.
 //
 // Therefore, the action implementation must be prepared to take more
 // arguments than it needs.  The ExcessiveArg type is used to

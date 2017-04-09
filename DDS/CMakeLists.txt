@@ -27,10 +27,10 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
     if (ARM)
 
-        set(CROSS_COMPILER_PATH /usr/bin/)
-        set(TOOLCHAIN_PREFIX ${CROSS_COMPILER_PATH}arm-linux-gnueabihf)
-        set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
-        set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
+#        set(CROSS_COMPILER_PATH /usr/bin/)
+#        set(TOOLCHAIN_PREFIX ${CROSS_COMPILER_PATH}arm-linux-gnueabihf)
+#        set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
+#        set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
 
         set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/")
         set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
@@ -44,7 +44,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/crypto++/")
 
         set (BOOST_ROOT "/home/jm/arm-linux-gnueabihf-pi/usr/")
-        find_package(Boost 1.6.0 COMPONENTS mpi serialization REQUIRED)
+        set (BOOST_LIBRARYDIR "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf")
+        find_package(Boost 1.6.2 COMPONENTS mpi serialization chrono thread system REQUIRED)
         if(Boost_FOUND)
             message(STATUS "ARM_BOOST Found!")
             message(STATUS "ARM_Boost version: ${Boost_VERSION}")
@@ -99,7 +100,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
         endif()
 
-        find_package(Boost 1.5.8 COMPONENTS mpi serialization program_options REQUIRED)
+        find_package(Boost 1.5.8 COMPONENTS mpi serialization program_options chrono thread system REQUIRED)
         if(Boost_FOUND)
             message(STATUS "Boost Found!")
             message(STATUS "Boost version: ${Boost_VERSION}")
@@ -160,17 +161,18 @@ add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 if (ARM)
     target_link_libraries(${PROJECT_NAME}
             ${MPI_LIBRARIES}
-
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_mpi.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_serialization.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_program_options.so
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_thread.so
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_chrono.so
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_system.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libcrypto++.so.6
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libcryptopp.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so.5
             /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libudev.so.1
             /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libpthread.so.0
-
             MasterNodeObject
             SlaveNodeObject)
 else()

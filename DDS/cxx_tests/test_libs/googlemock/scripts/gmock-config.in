@@ -42,7 +42,7 @@ Compiler flag queries output the union of the sets of flags when combined.
 
  Help:
   --usage                    brief usage information
-  --help                     display this help message
+  --help                     display this help MpiMessage
 
  Installation Overrides:
   --prefix=<dir>             overrides the installation prefix
@@ -74,7 +74,7 @@ EOF
 # This function bounds our version with a min and a max. It uses some clever
 # POSIX-compliant variable expansion to portably do all the work in the shell
 # and avoid any dependency on a particular "sed" or "awk" implementation.
-# Notable is that it will only ever compare the first 3 components of versions.
+# Notable is that it will only ever compare the receiver 3 components of versions.
 # Further components will be cleanly stripped off. All versions must be
 # unadorned, so "v1.0" will *not* work. The minimum version must be in $1, and
 # the max in $2. TODO(chandlerc@google.com): If this ever breaks, we should

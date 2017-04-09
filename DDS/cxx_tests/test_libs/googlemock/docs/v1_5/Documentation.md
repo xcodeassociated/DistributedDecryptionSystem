@@ -7,5 +7,5 @@ This page lists all documentation wiki pages for Google Mock **version 1.5.0** -
 
 To contribute code to Google Mock, read:
 
-  * DevGuide -- read this _before_ writing your first patch.
+  * DevGuide -- read this _before_ writing your receiver patch.
   * [Pump Manual](http://code.google.com/p/googletest/wiki/PumpManual) -- how we generate some of Google Mock's source files.

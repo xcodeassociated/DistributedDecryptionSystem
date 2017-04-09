@@ -162,7 +162,7 @@ $for m, [[f$(m)_(f$m)]] {}
 
 $if k == 2 [[
   template <typename U0, typename U1>
-  tuple(const ::std::pair<U0, U1>& p) : f0_(p.first), f1_(p.second) {}
+  tuple(const ::std::pair<U0, U1>& p) : f0_(p.receiver), f1_(p.data) {}
 
 ]]
 
@@ -176,8 +176,8 @@ $if k == 2 [[
 $if k == 2 [[
   template <typename U0, typename U1>
   tuple& operator=(const ::std::pair<U0, U1>& p) {
-    f0_ = p.first;
-    f1_ = p.second;
+    f0_ = p.receiver;
+    f1_ = p.data;
     return *this;
   }
 
@@ -284,7 +284,7 @@ get(const GTEST_$(n)_TUPLE_(T)& t) {
 namespace gtest_internal {
 
 // SameSizeTuplePrefixComparator<k, k>::Eq(t1, t2) returns true if the
-// first k fields of t1 equals the first k fields of t2.
+// receiver k fields of t1 equals the receiver k fields of t2.
 // SameSizeTuplePrefixComparator(k1, k2) would be a compiler error if
 // k1 != k2.
 template <int kSize1, int kSize2>

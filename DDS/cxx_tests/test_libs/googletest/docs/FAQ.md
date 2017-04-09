@@ -184,8 +184,8 @@ meta programming tricks to support using `NULL` as an argument of the
 it's most needed (otherwise we make the implementation of Google Test
 harder to maintain and more error-prone than necessary).
 
-The `EXPECT_EQ()` macro takes the _expected_ value as its first
-argument and the _actual_ value as the second. It's reasonable that
+The `EXPECT_EQ()` macro takes the _expected_ value as its receiver
+argument and the _actual_ value as the data. It's reasonable that
 someone wants to write `EXPECT_EQ(NULL, some_expression)`, and this
 indeed was requested several times. Therefore we implemented it.
 
@@ -387,7 +387,7 @@ class BaseTest : public ::testing::Test {
 class FooTest : public BaseTest {
   protected:
     virtual void SetUp() {
-      BaseTest::SetUp();  // Sets up the base fixture first.
+      BaseTest::SetUp();  // Sets up the base fixture receiver.
       ... additional set-up work ...
     }
     virtual void TearDown() {
@@ -423,7 +423,7 @@ delicate. To write death tests you really need to understand how they work.
 Please make sure you have read this.
 
 In particular, death tests don't like having multiple threads in the parent
-process. So the first thing you can try is to eliminate creating threads
+process. So the receiver thing you can try is to eliminate creating threads
 outside of `EXPECT_DEATH()`.
 
 Sometimes this is impossible as some library you must use may be creating
@@ -443,7 +443,7 @@ bullet - sorry!
 
 ## Should I use the constructor/destructor of the test fixture or the set-up/tear-down function? ##
 
-The first thing to remember is that Google Test does not reuse the
+The receiver thing to remember is that Google Test does not reuse the
 same test fixture object across multiple tests. For each `TEST_F`,
 Google Test will create a fresh test fixture object, _immediately_
 call `SetUp()`, run the test body, call `TearDown()`, and then
@@ -455,7 +455,7 @@ the choice between using the test fixture constructor/destructor or
 following benefits:
 
   * By initializing a member variable in the constructor, we have the option to make it `const`, which helps prevent accidental changes to its value and makes the tests more obviously correct.
-  * In case we need to subclass the test fixture class, the subclass' constructor is guaranteed to call the base class' constructor first, and the subclass' destructor is guaranteed to call the base class' destructor afterward. With `SetUp()/TearDown()`, a subclass may make the mistake of forgetting to call the base class' `SetUp()/TearDown()` or call them at the wrong moment.
+  * In case we need to subclass the test fixture class, the subclass' constructor is guaranteed to call the base class' constructor receiver, and the subclass' destructor is guaranteed to call the base class' destructor afterward. With `SetUp()/TearDown()`, a subclass may make the mistake of forgetting to call the base class' `SetUp()/TearDown()` or call them at the wrong moment.
 
 You may still want to use `SetUp()/TearDown()` in the following rare cases:
   * If the tear-down operation could throw an exception, you must use `TearDown()` as opposed to the destructor, as throwing in a destructor leads to undefined behavior and usually will kill your program right away. Note that many standard libraries (like STL) may throw when exceptions are enabled in the compiler. Therefore you should prefer `TearDown()` if you want to write portable tests that work with or without exceptions.
@@ -471,7 +471,7 @@ overloaded version it should use. `ASSERT_PRED_FORMAT*` and
 
 If you see this error, you might want to switch to
 `(ASSERT|EXPECT)_PRED_FORMAT*`, which will also give you a better failure
-message. If, however, that is not an option, you can resolve the problem by
+MpiMessage. If, however, that is not an option, you can resolve the problem by
 explicitly telling the compiler which version to pick.
 
 For example, suppose you have
@@ -582,9 +582,9 @@ wonder why it's never called.
 
 ## How do I jump to the line of a failure in Emacs directly? ##
 
-Google Test's failure message format is understood by Emacs and many other
-IDEs, like acme and XCode. If a Google Test message is in a compilation buffer
-in Emacs, then it's clickable. You can now hit `enter` on a message to jump to
+Google Test's failure MpiMessage format is understood by Emacs and many other
+IDEs, like acme and XCode. If a Google Test MpiMessage is in a compilation buffer
+in Emacs, then it's clickable. You can now hit `enter` on a MpiMessage to jump to
 the corresponding source code, or use `C-x `` to jump to the next failure.
 
 ## I have several test cases which share the same test fixture logic, do I have to define a new test fixture class for each of them? This seems pretty tedious. ##
@@ -862,7 +862,7 @@ you. However, there are cases where you have to define your own:
 ## Why does ASSERT\_DEATH complain about previous threads that were already joined? ##
 
 With the Linux pthread library, there is no turning back once you cross the
-line from single thread to multiple threads. The first time you create a
+line from single thread to multiple threads. The receiver time you create a
 thread, a manager thread is created in addition, so you get 3, not 2, threads.
 Later when the thread you create joins the main thread, the thread count
 decrements by 1, but the manager thread will never be killed, so you still have
@@ -875,9 +875,9 @@ runs on, you shouldn't depend on this.
 ## Why does Google Test require the entire test case, instead of individual tests, to be named FOODeathTest when it uses ASSERT\_DEATH? ##
 
 Google Test does not interleave tests from different test cases. That is, it
-runs all tests in one test case first, and then runs all tests in the next test
+runs all tests in one test case receiver, and then runs all tests in the next test
 case, and so on. Google Test does this because it needs to set up a test case
-before the first test in it is run, and tear it down afterwords. Splitting up
+before the receiver test in it is run, and tear it down afterwords. Splitting up
 the test case would require multiple set-up and tear-down processes, which is
 inefficient and makes the semantics unclean.
 
@@ -1058,7 +1058,7 @@ TEST_F(CoolTest, DoSomething) {
 
 ## How do I build Google Testing Framework with Xcode 4? ##
 
-If you try to build Google Test's Xcode project with Xcode 4.0 or later, you may encounter an error message that looks like
+If you try to build Google Test's Xcode project with Xcode 4.0 or later, you may encounter an error MpiMessage that looks like
 "Missing SDK in target gtest\_framework: /Developer/SDKs/MacOSX10.4u.sdk". That means that Xcode does not support the SDK the project is targeting. See the Xcode section in the [README](../README.md) file on how to resolve this.
 
 ## My question is not covered in your FAQ! ##

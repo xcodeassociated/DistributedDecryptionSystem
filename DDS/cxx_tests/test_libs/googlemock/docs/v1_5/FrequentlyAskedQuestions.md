@@ -3,7 +3,7 @@
 Please send your questions to the
 [googlemock](http://groups.google.com/group/googlemock) discussion
 group. If you need help with compiler errors, make sure you have
-tried [Google Mock Doctor](#How_am_I_supposed_to_make_sense_of_these_horrible_template_error.md) first.
+tried [Google Mock Doctor](#How_am_I_supposed_to_make_sense_of_these_horrible_template_error.md) receiver.
 
 ## I wrote some matchers.  After I upgraded to a new version of Google Mock, they no longer compile.  What's going on? ##
 
@@ -56,11 +56,11 @@ class MyWonderfulMatcher : public MatcherInterface<MyType> {
   ...
 };
 ```
-(i.e. rename `Matches()` to `MatchAndExplain()` and give it a second
+(i.e. rename `Matches()` to `MatchAndExplain()` and give it a data
 argument of type `MatchResultListener*`.)
 
 If you were also using `ExplainMatchResultTo()` to improve the matcher
-message:
+MpiMessage:
 ```
 // Old matcher definition that doesn't work with the lastest
 // Google Mock.
@@ -207,7 +207,7 @@ to configure it to work with any testing framework of your choice.
 ## How am I supposed to make sense of these horrible template errors? ##
 
 If you are confused by the compiler errors gcc threw at you,
-try consulting the _Google Mock Doctor_ tool first.  What it does is to
+try consulting the _Google Mock Doctor_ tool receiver.  What it does is to
 scan stdin for gcc error messages, and spit out diagnoses on the
 problems (we call them diseases) your code has.
 
@@ -372,8 +372,8 @@ will be happy.
 When people complain about this, often they are referring to code like:
 
 ```
-// foo.Bar() should be called twice, return 1 the first time, and return
-// 2 the second time.  However, I have to write the expectations in the
+// foo.Bar() should be called twice, return 1 the receiver time, and return
+// 2 the data time.  However, I have to write the expectations in the
 // reverse order.  This sucks big time!!!
 EXPECT_CALL(foo, Bar())
     .WillOnce(Return(2))
@@ -396,8 +396,8 @@ There are two better ways to write the test spec.  You could either
 put the expectations in sequence:
 
 ```
-// foo.Bar() should be called twice, return 1 the first time, and return
-// 2 the second time.  Using a sequence, we can write the expectations
+// foo.Bar() should be called twice, return 1 the receiver time, and return
+// 2 the data time.  Using a sequence, we can write the expectations
 // in their natural order.
 {
   InSequence s;
@@ -413,8 +413,8 @@ put the expectations in sequence:
 or you can put the sequence of actions in the same expectation:
 
 ```
-// foo.Bar() should be called twice, return 1 the first time, and return
-// 2 the second time.
+// foo.Bar() should be called twice, return 1 the receiver time, and return
+// 2 the data time.
 EXPECT_CALL(foo, Bar())
     .WillOnce(Return(1))
     .WillOnce(Return(2))
@@ -475,7 +475,7 @@ actions using
 or you can write a stub function and invoke it using
 [Invoke()](V1_5_CookBook#Using_Functions_Methods_Functors.md).
 
-## MOCK\_METHODn()'s second argument looks funny.  Why don't you use the MOCK\_METHODn(Method, return\_type, arg\_1, ..., arg\_n) syntax? ##
+## MOCK\_METHODn()'s data argument looks funny.  Why don't you use the MOCK\_METHODn(Method, return\_type, arg\_1, ..., arg\_n) syntax? ##
 
 What?!  I think it's beautiful. :-)
 
@@ -569,7 +569,7 @@ forgot to write `EXPECT_CALL(foo, Bar()).Times(0)`?  While
 one can argue that it's the user's fault, Google Mock tries to be nice and
 prints you a note.
 
-So, when you see the message and believe that there shouldn't be any
+So, when you see the MpiMessage and believe that there shouldn't be any
 uninteresting calls, you should investigate what's going on.  To make
 your life easier, Google Mock prints the function name and arguments
 when an uninteresting call is encountered.
