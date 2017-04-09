@@ -45,6 +45,16 @@ struct MpiMessage{
     MpiMessage(rank_type _receiver, rank_type _sender, Event _event, data_type data)
             : receiver{_receiver}, sender{_sender}, event{_event}, data{data} {}
     MpiMessage(const MpiMessage&) = default;
+
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version) {
+        ar & receiver;
+        ar & sender;
+        ar & data;
+        ar & event;
+    }
 };
 
 struct SysComMessage{
@@ -229,18 +239,19 @@ int main(int argc, const char* argv[]) {
             if (stat){
                 std::cout << "[debug: " << world.rank() << "] Receive thread has probed a MpiMessage..."<< std::endl;
                 
-                data_type data{""};
-                world.recv((*stat).source(), (*stat).tag(), data);
-                receive_queue.push({(*stat).source(), world.rank(), MpiMessage::Event::PING, data});
+                //data_type data{""};
+                MpiMessage received_message;
+                world.recv((*stat).source(), (*stat).tag(), received_message);
+                receive_queue.push({(*stat).source(), world.rank(), MpiMessage::Event::PING, received_message.data});
                 
-                std::cout << "[debug: " << world.rank() << "] Receive thread has received MpiMessage\n    data:" << data << std::endl;
+                std::cout << "[debug: " << world.rank() << "] Receive thread has received MpiMessage\n    data:" << received_message.data << std::endl;
             }
             
             if (!send_queue.empty()){
                 MpiMessage msg;
                 while (send_queue.pop(msg)){
                     std::cout << "[debug: " << world.rank() << "] " << "Message {target: " << msg.receiver << ", data: " << msg.data << "} is about to send" << std::endl;
-                    world.send(msg.receiver, 0, msg.data);
+                    world.send(msg.receiver, 0, msg);
                     std::cout << "[debug: " << world.rank() << "] " << "Message sent." << std::endl;
                 }
             }
@@ -338,18 +349,19 @@ int main(int argc, const char* argv[]) {
             if (stat){
                 std::cout << "[debug: " << world.rank() << "] Receive thread has probed a MpiMessage..."<< std::endl;
                 
-                data_type data{""};
-                world.recv((*stat).source(), (*stat).tag(), data);
-                receive_queue.push({(*stat).source(), world.rank(), MpiMessage::Event::PING, data});
+                //data_type data{""};
+                MpiMessage received_message;
+                world.recv((*stat).source(), (*stat).tag(), received_message);
+                receive_queue.push({(*stat).source(), world.rank(), MpiMessage::Event::PING, received_message.data});
                 
-                std::cout << "[debug: " << world.rank() << "] Receive thread has received MpiMessage\n    data:" << data << std::endl;
+                std::cout << "[debug: " << world.rank() << "] Receive thread has received MpiMessage\n    data:" << received_message.data << std::endl;
             }
             
             if (!send_queue.empty()){
                 MpiMessage msg;
                 while (send_queue.pop(msg)){
                     std::cout << "[debug: " << world.rank() << "] " << "Message {target: " << msg.receiver << ", data: " << msg.data << "} is about to send" << std::endl;
-                    world.send(msg.receiver, 0, msg.data);
+                    world.send(msg.receiver, 0, msg);
                     std::cout << "[debug: " << world.rank() << "] " << "Message sent." << std::endl;
                 }
             }
