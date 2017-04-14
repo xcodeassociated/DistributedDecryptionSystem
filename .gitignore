@@ -29,10 +29,10 @@
 *.app
 
 # idea Clion
-DDS/.idea/*
+DDS/.idea/
 
 # cmake build dir
-DDS/cmake-build-*/*
+DDS/cmake-build-*/
 
 # DDS binaries
 DDS/RunTests
