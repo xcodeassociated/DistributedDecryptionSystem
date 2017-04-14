@@ -1,3 +1,10 @@
+########################################################################################################################
+## DDS Project CMakeLists.txt - Main app config file
+##
+## TODO: Clean CMakeLists.txt to make it more generic for use without cmake hardcoded env variables
+##
+########################################################################################################################
+
 cmake_minimum_required(VERSION 3.5.1)
 project(DDS)
 
@@ -29,10 +36,13 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     if (ARM)
         ## Linux amdhf only config
 
-#        set(CROSS_COMPILER_PATH /usr/bin/)
-#        set(TOOLCHAIN_PREFIX ${CROSS_COMPILER_PATH}arm-linux-gnueabihf)
-#        set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
-#        set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
+        ## doesn't work since Clion 2017.1 - Need to manually pass the C and CXX compiler as cmake argument:
+        #  -DCMAKE_C_COMPILER=<C_COMPILER> -DCMAKE_CXX_COMPILER=<CXX_COMPILER>
+        #
+        #        set(CROSS_COMPILER_PATH /usr/bin/)
+        #        set(TOOLCHAIN_PREFIX ${CROSS_COMPILER_PATH}arm-linux-gnueabihf)
+        #        set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
+        #        set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
 
         set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/")
         set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
@@ -126,6 +136,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     ## macOS x64 only config
+    message(STATUS "macOS")
 
     set (CMAKE_PREFIX_PATH "/usr/include")
     set (CMAKE_PREFIX_PATH "/usr/lib/")
@@ -176,16 +187,15 @@ endif()
 if (O)
     if (O STREQUAL "0")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
-
     elseif(O STREQUAL "1")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
-
     elseif(O STREQUAL "2")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
-
     elseif(O STREQUAL "3")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-
+    else()
+        ## by default turn off optimization - for debugging
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
     endif()
 endif()
 
@@ -208,6 +218,7 @@ set(SOURCE_FILES ${CXX}/main.cpp)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 if (ARM)
+    ## TODO: Make ARM cross-compiler able to use Boost cmake module to link BOOST libs
     target_link_libraries(${PROJECT_NAME}
             ${MPI_LIBRARIES}
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_mpi.so

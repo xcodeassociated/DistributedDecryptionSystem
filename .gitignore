@@ -27,3 +27,14 @@
 *.exe
 *.out
 *.app
+
+# idea Clion
+DDS/.idea/*
+
+# cmake build dir
+DDS/cmake-build-*/*
+
+# DDS binaries
+DDS/RunTests
+DDS/DDS
+DDS/DDS-Debug
