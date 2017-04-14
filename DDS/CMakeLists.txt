@@ -18,14 +18,16 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
-
 message (STATUS "Build DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
+
     message(STATUS "Linux")
 
     if (ARM)
+        ## Linux amdhf only config
 
 #        set(CROSS_COMPILER_PATH /usr/bin/)
 #        set(TOOLCHAIN_PREFIX ${CROSS_COMPILER_PATH}arm-linux-gnueabihf)
@@ -78,7 +80,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,/mpi/DDS")
 
     else()
-        ## amd64 only configuration
+        ## Linux amd64 only configuration
 
         set (CMAKE_PREFIX_PATH "/usr/include")
         set (CMAKE_PREFIX_PATH "/usr/include/cryptopp/")
@@ -122,22 +124,69 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
     endif()
 
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    ## macOS x64 only config
+
+    set (CMAKE_PREFIX_PATH "/usr/include")
+    set (CMAKE_PREFIX_PATH "/usr/lib/")
+    set (CMAKE_PREFIX_PATH "/usr/local/opt/")
+
+    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/cryptopp/5.6.5/")
+    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/cryptopp/5.6.5/include/")
+    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/cryptopp/5.6.5/lib/")
+    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/open-mpi/1.10.2_1/")
+    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/open-mpi/1.10.2_1/include/")
+    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/open-mpi/1.10.2_1/lib/")
+
+    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/boost/1.60.0_2/")
+    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/boost/1.60.0_2/include/")
+    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/boost/1.60.0_2/lib/")
+
+    set (BOOST_ROOT "/usr/local/Cellar/boost/1.60.0_2/")
+
+    include_directories(${MPI_INCLUDE_PATH})
+    include_directories(${Boost_INCLUDE_DIRS})
+    include_directories("/usr/local/Cellar/cryptopp/5.6.5/include/")
+
+    find_package(MPI REQUIRED)
+    if(MPI_FOUND)
+        message(STATUS "MPI Found!")
+        message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
+    endif()
+
+    find_package(Boost 1.6.0 COMPONENTS mpi serialization program_options chrono thread system REQUIRED)
+    if(Boost_FOUND)
+        message(STATUS "Boost Found!")
+        message(STATUS "Boost version: ${Boost_VERSION}")
+        message(STATUS "Boost include: ${Boost_INCLUDE_DIRS}")
+        message(STATUS "Boost libs: ${Boost_LIBRARY_DIRS}")
+    endif()
+
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/cryptopp-cmake")
+    find_package(CryptoPP REQUIRED)
+
+    if (CryptoPP_FOUND)
+        message(STATUS "Crypto++ found!")
+    endif()
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 endif()
 
+if (O)
+    if (O STREQUAL "0")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
 
-if (O STREQUAL "0")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
+    elseif(O STREQUAL "1")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
 
-elseif(O STREQUAL "1")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
+    elseif(O STREQUAL "2")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
-elseif(O STREQUAL "2")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+    elseif(O STREQUAL "3")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
-elseif(O STREQUAL "3")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-
+    endif()
 endif()
 
 set(APP_CORE cxx_elements/core_application)
@@ -185,16 +234,17 @@ else()
             SlaveNodeObject)
 endif()
 
-## options checks
-if (NOT CP STREQUAL "")
-    add_custom_command(TARGET ${PROJECT_NAME}
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> ${CP}
+## post build steps
+if (CP)
+    if (NOT CP STREQUAL "")
+        add_custom_command(TARGET ${PROJECT_NAME}
+                POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> ${CP}
 
-            ## Copy also SHARED LIBs
-            COMMAND ${CMAKE_COMMAND} -E
-                copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/MasterNode/libMasterNodeObject.so ${CP}
-            COMMAND ${CMAKE_COMMAND} -E
-                copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/libSlaveNodeObject.so ${CP})
-
+                ## Copy also SHARED LIBs
+                COMMAND ${CMAKE_COMMAND} -E
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/MasterNode/libMasterNodeObject.so ${CP}
+                COMMAND ${CMAKE_COMMAND} -E
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/libSlaveNodeObject.so ${CP})
+    endif()
 endif()

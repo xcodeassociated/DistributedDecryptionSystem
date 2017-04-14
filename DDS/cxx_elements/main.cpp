@@ -12,7 +12,7 @@
 #include <boost/serialization/string.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 
-//#define CRYPTO
+#define CRYPTO
 
 #ifdef CRYPTO
 #include <cryptopp/modes.h>
@@ -24,7 +24,7 @@ namespace mpi = boost::mpi;
 namespace po = boost::program_options;
 
 using data_type = std::string;
-using rank_type = uint8_t ;
+using rank_type = int;
 
 
 //TODO: ?? Polimprphism for messages ??
@@ -69,7 +69,7 @@ struct SysComMessage{
     DataType data;
     
     SysComMessage() = default;
-    SysComMessage(uint8_t _id, Event _evt, DataType _data) : id{_id}, event{_evt}, data{_data} {}
+    SysComMessage(int _id, Event _evt, DataType _data) : id{_id}, event{_evt}, data{_data} {}
     SysComMessage(const SysComMessage&) = default;
 };
 
@@ -89,7 +89,7 @@ public:
     };
     
 private:
-    uint8_t id = 0;
+    int id = 0;
     KeyRange range{0, 0};
     bool work = false;
     uint64_t current_key = 0;
