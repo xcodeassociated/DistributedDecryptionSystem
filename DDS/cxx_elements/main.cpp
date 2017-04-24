@@ -11,6 +11,7 @@
 #include <boost/mpi.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
+#include <boost/move/move.hpp>
 
 #define CRYPTO
 
@@ -94,14 +95,17 @@ private:
     bool work = false;
     uint64_t current_key = 0;
     uint32_t modulo_key = 0;
-    boost::lockfree::spsc_queue<SysComMessage>& syscom;
+    boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_tx_ptr = nullptr;
+    boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_rx_ptr = nullptr;
     
 public:
-    explicit Worker(int _id, boost::lockfree::spsc_queue<SysComMessage>& syscom_ref)
-            : id{_id}, syscom{syscom_ref} {}
+    explicit Worker(int _id,
+                    boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_tx_ref, boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_rx_ref)
+            : id{_id}, syscom_tx_ptr{syscom_tx_ref}, syscom_rx_ptr{syscom_rx_ref} {}
     
-    explicit Worker(int _id, KeyRange _range, uint32_t _modulo, boost::lockfree::spsc_queue<SysComMessage>& syscom_ref)
-            : id{_id}, range(_range), modulo_key{_modulo}, syscom{syscom_ref} {}
+    explicit Worker(int _id, KeyRange _range, uint32_t _modulo,
+                    boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_tx_ref, boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_rx_ref)
+            : id{_id}, range(_range), modulo_key{_modulo}, syscom_tx_ptr{syscom_tx_ref}, syscom_rx_ptr{syscom_rx_ref} {}
     
     void setRange(KeyRange&& _range){
         this->range = _range;
@@ -122,23 +126,47 @@ public:
     auto getModuloKey(void) -> uint32_t {
         return this->modulo_key;
     }
-    
+
+    void process() {
+        while (this->work){
+
+            // check if there's any new syscom message... and process message if available
+            SysComMessage sys_msg;
+            while (syscom_rx_ptr->pop(sys_msg)) {
+                switch(sys_msg.event){
+                    case SysComMessage::Event::PING:{
+                        SysComMessage syscom_msg{this->id, SysComMessage::Event::PING, std::to_string(this->current_key)};
+                        this->syscom_tx_ptr->push(syscom_msg);
+                    }break;
+                    case SysComMessage::Event::INTERRUPT:{
+                        this->work = false;
+                    }break;
+                    default: // TODO: send invalid message...
+                        break;
+                }
+            }
+
+            // go back to work...
+            this->current_key++;
+
+            // notify master thread when modulo is reached
+            if ((this->current_key % this->modulo_key) == 0) {
+                SysComMessage syscom_msg{this->id, SysComMessage::Event::PING, std::to_string(this->current_key)};
+                this->syscom_tx_ptr->push(syscom_msg);
+            }
+
+            boost::this_thread::sleep_for(boost::chrono::nanoseconds(5));
+        }
+    }
+
     //TODO: CryptoCPP
     void start(){
         assert(this->modulo_key > 0);
         
         if (!this->work)
             this->work = true;
-        
-        while (this->work){
-            this->current_key++;
-            
-            if ((this->current_key % this->modulo_key) == 0) {
-                SysComMessage syscom_msg{this->id, SysComMessage::Event::PING, std::to_string(this->current_key)};
-                this->syscom.push(syscom_msg);
-            }
-            boost::this_thread::sleep_for(boost::chrono::nanoseconds(5));
-        }
+
+       this->process();
     }
     
     void stop(){
@@ -201,17 +229,15 @@ int main(int argc, const char* argv[]) {
                 auto message_processing = [&] {
                     MpiMessage msg;
                     while (receive_queue.pop(msg)) {
-                        std::cout << "[debug: " << world.rank() << "]: Processing... (received " << ++received
-                                  << ") MpiMessage: \n";
-                        std::cout << "      {" << "sender: " << msg.receiver << ", data: " << msg.data << "}"
-                                  << std::endl;
-                        {
+                        std::cout << "[debug: " << world.rank() << "]: Processing... (received " << ++received << ") MpiMessage: \n";
+                        std::cout << "      {" << "sender: " << msg.receiver << ", data: " << msg.data << "}" << std::endl;
+
                             std::stringstream ss;
                             ss << "SENDING BACK FROM: " << world.rank() << std::endl;
                             data_type data{ss.str()};
             
-                            send_queue.push({msg.receiver, world.rank(), MpiMessage::Event::PING, data});
-                        }
+                            //send_queue.push({msg.receiver, world.rank(), MpiMessage::Event::PING, data});
+
                     }
                     boost::this_thread::sleep_for(boost::chrono::nanoseconds(process_message_loop_delay));
                 };
@@ -239,10 +265,9 @@ int main(int argc, const char* argv[]) {
             if (stat){
                 std::cout << "[debug: " << world.rank() << "] Receive thread has probed a MpiMessage..."<< std::endl;
                 
-                //data_type data{""};
                 MpiMessage received_message;
                 world.recv((*stat).source(), (*stat).tag(), received_message);
-                receive_queue.push({(*stat).source(), world.rank(), MpiMessage::Event::PING, received_message.data});
+                receive_queue.push({(*stat).source(), world.rank(), received_message.event, received_message.data});
                 
                 std::cout << "[debug: " << world.rank() << "] Receive thread has received MpiMessage\n    data:" << received_message.data << std::endl;
             }
@@ -262,7 +287,7 @@ int main(int argc, const char* argv[]) {
         
         boost::lockfree::spsc_queue<MpiMessage> receive_queue(128);
         boost::lockfree::spsc_queue<MpiMessage> send_queue(128);
-    
+
         auto thread_pool = boost::thread::hardware_concurrency();
         auto used_threads = 2u; // MPI TH, Process TH
         
@@ -271,59 +296,98 @@ int main(int argc, const char* argv[]) {
         
         auto process_thread_implementation = [&]{
             std::cout << "[debug: " << world.rank() << "] Process thread id: " <<  boost::this_thread::get_id() <<  " has been triggered!" << std::endl;
-            
-            boost::lockfree::spsc_queue<SysComMessage> syscom(128);
-            
+
             auto avaiable_threads = thread_pool - used_threads;
+
+            boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom = boost::make_shared<boost::lockfree::spsc_queue<SysComMessage>>(128);
+            boost::container::vector<boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>>> syscom_thread{};
+
             boost::container::vector<boost::shared_ptr<Worker>> worker_array(avaiable_threads);
             boost::container::vector<boost::thread> thread_array{};
+
             boost::condition_variable barrier;
             boost::mutex barrier_mutex;
+
             bool barrier_flag = false;
-            
+            bool isInit = false;
+            bool isKilled = false;
+
             uint8_t worker_id = 0u;
             
             auto init_worker_threads = [&]{
                 // TODO: devide key pool for threads...
                 
                 for (auto& worker : worker_array){
+                    std::cout << "[debug: " << world.rank() << "] Preparing syscom for Worker for thread: " << worker_id << std::endl;
+                    boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> sc = boost::make_shared<boost::lockfree::spsc_queue<SysComMessage>>(128);
+                    syscom_thread.push_back(sc);
+
                     std::cout << "[debug: " << world.rank() << "] Preparing Worker for thread: " << worker_id << std::endl;
-                    worker = boost::make_shared<Worker>(worker_id++, Worker::KeyRange{0, 1000}, 5000, syscom);
+                    worker = boost::make_shared<Worker>(worker_id, Worker::KeyRange{0, 1000}, 5000, syscom, sc);
+
                     auto thread_task = [&]{
                         boost::unique_lock<boost::mutex> lk(barrier_mutex);
                         barrier.wait(lk, [&barrier_flag]{ return barrier_flag; });
-                        
                         worker->start();
                     };
                     thread_array.emplace_back(thread_task);
+                    worker_id += 1;
                 }
-                
-                barrier_flag = true;
-                barrier.notify_all();
             };
             
             auto message_processing = [&] {
                 std::size_t received = 0l;
                 while (true) {
+
                     MpiMessage msg;
+
                     while (receive_queue.pop(msg)) {
-                        std::cout << "[debug: " << world.rank() << "]: Processing... (received " << ++received
-                                  << ") MpiMessage: \n";
-                        std::cout << "      {" << "sender: " << msg.receiver << ", data: " << msg.data << "}"
-                                  << std::endl;
-                        {
-                            std::stringstream ss;
-                            ss << "SENDING BACK FROM: " << world.rank() << std::endl;
-                            data_type data{ss.str()};
-                
-                            //...
-                            
-                            send_queue.push({msg.receiver, world.rank(), MpiMessage::Event::PING, data});
+                        std::cout << "[debug: " << world.rank() << "]: Processing... (received " << ++received << ") MpiMessage: \n";
+                        std::cout << "      {" << "sender: " << msg.receiver << ", data: " << msg.data << "}" << std::endl;
+
+                        // TODO: message processing logic class
+                        switch (msg.event){
+                            case MpiMessage::Event::PING: {
+
+//                                std::stringstream ss;
+//                                ss << "PING << SENDING BACK FROM: " << world.rank() << " >>" << std::endl;
+//                                data_type data{ss.str()};
+//                                send_queue.push({msg.receiver, world.rank(), MpiMessage::Event::PING, data});
+                            }break;
+                            case MpiMessage::Event::INIT: {
+                                if (!isInit) {
+                                    std::cout << "[debug: " << world.rank() << "]: Init message processing..."
+                                              << std::endl;
+
+                                    barrier_flag = true;
+                                    barrier.notify_all();
+
+                                    std::stringstream ss;
+                                    ss << "INIT << SENDING BACK FROM: " << world.rank() << " >>" << std::endl;
+                                    data_type data{ss.str()};
+                                    send_queue.push({msg.receiver, world.rank(), MpiMessage::Event::INIT, data});
+                                }else{
+                                    // TODO: send invalide operation...
+                                }
+                            }break;
+                            case MpiMessage::Event::KILL: {
+                                if (!isKilled) {
+                                    std::stringstream ss;
+                                    ss << "KILL << SENDING BACK FROM: " << world.rank() << " >>" << std::endl;
+                                    data_type data{ss.str()};
+                                    send_queue.push({msg.receiver, world.rank(), MpiMessage::Event::KILL, data});
+                                }else{
+                                    // TODO: send invalide operation...
+                                }
+                            }break;
+                            default:{
+                                // TODO: send invalide operation...
+                            }break;
                         }
                     }
                     
                     SysComMessage sys_msg;
-                    while (syscom.pop(sys_msg)){
+                    while (syscom->pop(sys_msg)){
                         switch (sys_msg.event){
                             case SysComMessage::Event::PING:
                                 std::cout << "[debug: " << world.rank() << "] SysCom: PING EVENT: "
@@ -349,10 +413,9 @@ int main(int argc, const char* argv[]) {
             if (stat){
                 std::cout << "[debug: " << world.rank() << "] Receive thread has probed a MpiMessage..."<< std::endl;
                 
-                //data_type data{""};
                 MpiMessage received_message;
                 world.recv((*stat).source(), (*stat).tag(), received_message);
-                receive_queue.push({(*stat).source(), world.rank(), MpiMessage::Event::PING, received_message.data});
+                receive_queue.push({(*stat).source(), world.rank(), received_message.event, received_message.data});
                 
                 std::cout << "[debug: " << world.rank() << "] Receive thread has received MpiMessage\n    data:" << received_message.data << std::endl;
             }

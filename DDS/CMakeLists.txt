@@ -57,7 +57,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
         set (BOOST_ROOT "/home/jm/arm-linux-gnueabihf-pi/usr/")
         set (BOOST_LIBRARYDIR "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf")
-        find_package(Boost 1.6.2 COMPONENTS mpi serialization chrono thread system REQUIRED)
+        find_package(Boost COMPONENTS mpi serialization chrono thread system REQUIRED) ## BOOST version can be specified as 2nd argument
         if(Boost_FOUND)
             message(STATUS "ARM_BOOST Found!")
             message(STATUS "ARM_Boost version: ${Boost_VERSION}")
@@ -112,7 +112,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
         endif()
 
-        find_package(Boost 1.5.8 COMPONENTS mpi serialization program_options chrono thread system REQUIRED)
+        find_package(Boost COMPONENTS mpi serialization program_options chrono thread system REQUIRED) ## BOOST version can be specified as 2nd argument
         if(Boost_FOUND)
             message(STATUS "Boost Found!")
             message(STATUS "Boost version: ${Boost_VERSION}")
@@ -165,7 +165,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
     endif()
 
-    find_package(Boost 1.6.0 COMPONENTS mpi serialization program_options chrono thread system REQUIRED)
+    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system REQUIRED) ## BOOST version can be specified as 2nd argument
     if(Boost_FOUND)
         message(STATUS "Boost Found!")
         message(STATUS "Boost version: ${Boost_VERSION}")
