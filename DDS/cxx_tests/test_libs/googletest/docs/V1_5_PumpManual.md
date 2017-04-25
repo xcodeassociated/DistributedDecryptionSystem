@@ -119,12 +119,12 @@ Func(a1 + a2 + a3);  // If n is 3.
 
 We support the following meta programming constructs:
 
-| `$var id = exp` | Defines a named constant value. `$id` is valid util the end of the current meta lexical block. |
+| `$var rank = exp` | Defines a named constant value. `$rank` is valid util the end of the current meta lexical block. |
 |:----------------|:-----------------------------------------------------------------------------------------------|
-| $range id exp..exp | Sets the range of an iteration variable, which can be reused in multiple loops later.          |
-| $for id sep [[code ](.md)] | Iteration. The range of `id` must have been defined earlier. `$id` is valid in `code`.         |
+| $range rank exp..exp | Sets the range of an iteration variable, which can be reused in multiple loops later.          |
+| $for rank sep [[code ](.md)] | Iteration. The range of `rank` must have been defined earlier. `$rank` is valid in `code`.         |
 | `$($)`          | Generates a single `$` character.                                                              |
-| `$id`           | Value of the named constant or iteration variable.                                             |
+| `$rank`           | Value of the named constant or iteration variable.                                             |
 | `$(exp)`        | Value of the expression.                                                                       |
 | `$if exp [[ code ]] else_branch` | Conditional.                                                                                   |
 | `[[ code ]]`    | Meta lexical block.                                                                            |
@@ -142,12 +142,12 @@ up in your output.
 
 ```
 code ::= atomic_code*
-atomic_code ::= $var id = exp
-    | $var id = [[ code ]]
-    | $range id exp..exp
-    | $for id sep [[ code ]]
+atomic_code ::= $var rank = exp
+    | $var rank = [[ code ]]
+    | $range rank exp..exp
+    | $for rank sep [[ code ]]
     | $($)
-    | $id
+    | $rank
     | $(exp)
     | $if exp [[ code ]] else_branch
     | [[ code ]]

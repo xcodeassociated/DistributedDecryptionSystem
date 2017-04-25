@@ -6,12 +6,12 @@
 #include <boost/container/vector.hpp>
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
 #include <boost/chrono.hpp>
+#include <boost/atomic.hpp>
 #include <boost/mpi.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
-#include <boost/move/move.hpp>
+#include <boost/optional.hpp>
 
 #define CRYPTO
 
@@ -26,31 +26,36 @@ namespace po = boost::program_options;
 
 using data_type = std::string;
 using rank_type = int;
-
+using message_id_type = std::size_t;
 
 //TODO: ?? Polimprphism for messages ??
 
 struct MpiMessage{
-    enum class Event{
+    enum class Event : uint8_t {
+        CALLBACK,
         INIT,
         PING,
         FOUND,
         KILL
     };
+    message_id_type id;
     rank_type receiver;
     rank_type sender;
-    data_type data;
     Event event;
-    
+    data_type data;
+    boost::optional<message_id_type> respond_to;
+
     MpiMessage() = default;
-    MpiMessage(rank_type _receiver, rank_type _sender, Event _event, data_type data)
-            : receiver{_receiver}, sender{_sender}, event{_event}, data{data} {}
+    MpiMessage(message_id_type _id, rank_type _receiver, rank_type _sender, Event _event, data_type data, boost::optional<message_id_type> res = boost::none)
+            : id{_id}, receiver{_receiver}, sender{_sender}, event{_event}, data{data}, respond_to{res} {}
+
     MpiMessage(const MpiMessage&) = default;
 
     friend class boost::serialization::access;
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version) {
+        ar & id;
         ar & receiver;
         ar & sender;
         ar & data;
@@ -60,17 +65,21 @@ struct MpiMessage{
 
 struct SysComMessage{
     using DataType = std::string;
-    enum class Event{
+    enum class Event : uint8_t  {
+        CALLBACK,
         KEY_FOUND,
         INTERRUPT,
         PING
     };
+    message_id_type id;
+    rank_type rank;
     Event event;
-    rank_type id;
     DataType data;
-    
+    boost::optional<message_id_type> respond_to;
+
     SysComMessage() = default;
-    SysComMessage(int _id, Event _evt, DataType _data) : id{_id}, event{_evt}, data{_data} {}
+    SysComMessage(message_id_type _id, int _rank, Event _evt, DataType _data, boost::optional<message_id_type> res = boost::none)
+            : id{_id}, rank{_rank}, event{_evt}, data{_data}, respond_to{res} {}
     SysComMessage(const SysComMessage&) = default;
 };
 
@@ -202,7 +211,7 @@ int main(int argc, const char* argv[]) {
     
     mpi::environment env(mpi::threading::multiple, true);
     mpi::communicator world;
-    
+
     if (world.rank() == 0) {
         
         boost::lockfree::spsc_queue<MpiMessage> receive_queue(128);
@@ -210,12 +219,15 @@ int main(int argc, const char* argv[]) {
         
         auto thread_pool = boost::thread::hardware_concurrency();
         auto used_threads = 2u; // MPI TH, Process TH
-        
+
+        std::size_t mpi_message_id = 0;
+        boost::atomic_uint32_t syscom_message_id{0};
+
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
-        std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread id: " << boost::this_thread::get_id() << std::endl;
+        std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread rank: " << boost::this_thread::get_id() << std::endl;
         
         auto process_thread_implementation = [&]{
-            std::cout << "[debug: " << world.rank() << "] Process thread id: " <<  boost::this_thread::get_id() <<  " has been triggered!" << std::endl;
+            std::cout << "[debug: " << world.rank() << "] Process thread rank: " <<  boost::this_thread::get_id() <<  " has been triggered!" << std::endl;
             
             std::size_t received = 0l;
             while (true){
@@ -290,12 +302,15 @@ int main(int argc, const char* argv[]) {
 
         auto thread_pool = boost::thread::hardware_concurrency();
         auto used_threads = 2u; // MPI TH, Process TH
-        
+
+        std::size_t mpi_message_id = 0;
+        boost::atomic_uint32_t syscom_message_id{0};
+
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
-        std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread id: " << boost::this_thread::get_id() << std::endl;
+        std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread rank: " << boost::this_thread::get_id() << std::endl;
         
         auto process_thread_implementation = [&]{
-            std::cout << "[debug: " << world.rank() << "] Process thread id: " <<  boost::this_thread::get_id() <<  " has been triggered!" << std::endl;
+            std::cout << "[debug: " << world.rank() << "] Process thread rank: " <<  boost::this_thread::get_id() <<  " has been triggered!" << std::endl;
 
             auto avaiable_threads = thread_pool - used_threads;
 
@@ -348,7 +363,11 @@ int main(int argc, const char* argv[]) {
                         // TODO: message processing logic class
                         switch (msg.event){
                             case MpiMessage::Event::PING: {
-
+                                int i = 0;
+                                for (auto& comm : syscom_thread){
+                                    SysComMessage syscom_msg{i++, SysComMessage::Event::PING, ""};
+                                    comm->push(syscom_msg);
+                                }
 //                                std::stringstream ss;
 //                                ss << "PING << SENDING BACK FROM: " << world.rank() << " >>" << std::endl;
 //                                data_type data{ss.str()};
@@ -391,7 +410,7 @@ int main(int argc, const char* argv[]) {
                         switch (sys_msg.event){
                             case SysComMessage::Event::PING:
                                 std::cout << "[debug: " << world.rank() << "] SysCom: PING EVENT: "
-                                          << " {id:" << sys_msg.id << ", data: " << sys_msg.data  << "}"<< std::endl;
+                                          << " {rank:" << sys_msg.rank << ", data: " << sys_msg.data  << "}"<< std::endl;
                                 break;
                         }
                     }
