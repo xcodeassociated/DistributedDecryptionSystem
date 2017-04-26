@@ -3,9 +3,11 @@
 #include <sstream>
 #include <utility>
 
-#include <boost/shared_ptr.hpp>
 #include <boost/container/vector.hpp>
 #include <boost/container/set.hpp>
+#include <boost/container/map.hpp>
+
+#include <boost/shared_ptr.hpp>
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
@@ -18,8 +20,7 @@
 #include <boost/algorithm/algorithm.hpp>
 #include <boost/move/move.hpp>
 #include <boost/tuple/tuple.hpp>
-
-// TODO: include boost.hana - need to install on mac
+#include <boost/function.hpp>
 
 #define CRYPTO
 
@@ -145,13 +146,43 @@ struct SysComMessage{
     SysComMessage(const SysComMessage&) = default;
 };
 
-auto constexpr receive_thread_loop_delay    = 100000u;         /* ns -> 0.1ms */
-auto constexpr process_message_loop_delay   = 10000000u;       /* ns  -> 10ms */
+class CallBackTimer {
+    boost::atomic<bool> _execute;
+    boost::thread _thd;
+public:
+    CallBackTimer()
+            :_execute(false)
+    {}
 
-struct Options{
-    static int foo;
+    ~CallBackTimer() {
+        if( _execute.load(boost::memory_order_acquire) ) {
+            stop();
+        };
+    }
+
+    void stop() {
+        _execute.store(false, boost::memory_order_release);
+        if( _thd.joinable() )
+            _thd.join();
+    }
+
+    void start(uint32_t interval, boost::function<void(void)> func) {
+        if( _execute.load(boost::memory_order_acquire) ) {
+            stop();
+        };
+        _execute.store(true, boost::memory_order_release);
+        _thd = boost::thread([this, interval, func]() {
+                               while (_execute.load(boost::memory_order_acquire)) {
+                                   func();
+                                   boost::this_thread::sleep_for(boost::chrono::milliseconds(interval));
+                               }
+                           });
+    }
+
+    bool is_running() const noexcept {
+        return (_execute.load(boost::memory_order_acquire) && _thd.joinable());
+    }
 };
-int Options::foo = 0;
 
 class Worker{
 public:
@@ -237,7 +268,7 @@ public:
             this->current_key++;
 
             // notify master thread when modulo is reached
-            if ((this->current_key % this->modulo_key) == 0) {
+            if ((this->current_key % this->modulo_key) == 0) { std::cout << "$$ " << id << "\n";
                 SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::PING, false, std::to_string(this->current_key)};
                 this->syscom_tx_ptr->push(syscom_msg);
             }
@@ -261,6 +292,14 @@ public:
     }
 
 };
+
+auto constexpr receive_thread_loop_delay    = 100000u;         /* ns -> 0.1ms */
+auto constexpr process_message_loop_delay   = 10000000u;       /* ns  -> 10ms */
+
+struct Options{
+    static int foo;
+};
+int Options::foo = 0;
 
 int main(int argc, const char* argv[]) {
     std::cout << std::boolalpha;
@@ -301,7 +340,7 @@ int main(int argc, const char* argv[]) {
         uint32_t mpi_message_id = 0;
         boost::atomic_uint32_t syscom_message_id{0};
 
-        boost::container::set<uint32_t> watchdog_need_callback{};
+        boost::container::map<uint32_t, uint8_t> watchdog_need_callback{}; // <message_id, kick>
 
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
         std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread rank: " << boost::this_thread::get_id() << std::endl;
@@ -311,13 +350,17 @@ int main(int argc, const char* argv[]) {
             
             uint64_t received = 0l;
             while (true){
-                
-                auto init = [&] {
-                    // TODO: total key range calc
-                    // TODO: prepare key ranges to send as well as modulo for workers
-                    // TODO: watchdog service enable (checking if slave is up & getting current results)
+
+                // TODO: total key range calc
+                // TODO: prepare key ranges to send as well as modulo for workers
+                // TODO: watchdog service enable (checking if slave is up & getting current results)
+
+                boost::function<void(void)> watchdog_implementation = [&]{
+                    //...
                 };
-                
+                CallBackTimer watchdog;
+                watchdog.start(1000, watchdog_implementation);
+
                 auto message_processing = [&] {
                     MpiMessage msg;
                     while (receive_queue.pop(msg)) {
@@ -364,9 +407,7 @@ int main(int argc, const char* argv[]) {
                     }
                     boost::this_thread::sleep_for(boost::chrono::nanoseconds(process_message_loop_delay));
                 };
-                
-                init();
-                //...
+
                 message_processing();
                 
             }
@@ -381,10 +422,15 @@ int main(int argc, const char* argv[]) {
             std::cout << "[debug: " << world.rank() << "] " << "Sending init data to: " << i << std::endl;
             auto msg_id = mpi_message_id++;
             send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::INIT, true, "INIT FROM MASTER"});
+
             // TODO: watchdog register mechanizm
-            auto result = watchdog_need_callback.insert(msg_id);
-            if (!result.second)
-                throw std::runtime_error{"Message cannot be registered to watchdog... already exists!"};
+            if (watchdog_need_callback.size() > 0){
+                if (watchdog_need_callback.find(msg_id) == watchdog_need_callback.end())
+                    watchdog_need_callback[msg_id] = 0;
+                else
+                    throw std::runtime_error{"Message already registered in Watchdog!"};
+            }else
+                watchdog_need_callback[msg_id] = 0;
 
             std::cout << "[debug: " << world.rank() << "] " << "Watchdog registered message with id: " << msg_id << " for rank: " << i << std::endl;
         }
