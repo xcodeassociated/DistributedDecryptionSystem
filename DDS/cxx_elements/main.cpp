@@ -8,6 +8,8 @@
 #include <boost/container/map.hpp>
 
 #include <boost/shared_ptr.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
@@ -43,7 +45,7 @@ struct PingWorkerReport{
 };
 
 struct MpiMessage{
-    enum class Event : uint8_t {
+    enum class Event : int {
         CALLBACK = 0,
         INIT = 1,
         PING = 2,
@@ -133,7 +135,7 @@ public:
 struct SysComMessage{
     using DataType = std::string;
 
-    enum class Event : uint8_t  {
+    enum class Event : int  {
         CALLBACK = 0,
         KEY_FOUND = 1,
         INTERRUPT = 2,
@@ -219,7 +221,7 @@ public:
     };
     
 private:
-    uint8_t id = 0;
+    int id = 0;
     KeyRange range{0, 0};
     bool work = false;
     uint64_t current_key = 0;
@@ -229,7 +231,7 @@ private:
     boost::shared_ptr<syscom_message_counter> syscom_message_counter_ptr = nullptr;
     
 public:
-    explicit Worker(uint8_t _id,
+    explicit Worker(int _id,
                     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_tx_ref,
                     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_rx_ref,
                     boost::shared_ptr<syscom_message_counter> counter_ptr)
@@ -239,7 +241,7 @@ public:
               syscom_message_counter_ptr{counter_ptr}
     {}
     
-    explicit Worker(uint8_t _id, KeyRange _range, uint32_t _modulo,
+    explicit Worker(int _id, KeyRange _range, uint32_t _modulo,
                     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_tx_ref,
                     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_rx_ref,
                     boost::shared_ptr<syscom_message_counter> counter_ptr)
@@ -298,7 +300,7 @@ public:
 
             // notify master thread when modulo is reached
             if ((this->current_key % this->modulo_key) == 0) {
-                SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::PING, false, std::to_string(this->current_key)};
+//                SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::PING, false, std::to_string(this->current_key)};
 //                this->syscom_tx_ptr->push(syscom_msg);
             }
 
@@ -369,8 +371,9 @@ int main(int argc, const char* argv[]) {
         boost::atomic_uint32_t mpi_message_id{0};
 //        boost::atomic_uint32_t syscom_message_id{0};
 
-        boost::container::map<rank_type, boost::container::map<uint8_t, uint64_t>> nodemap; // node - workers (progress)
-        boost::container::map<uint32_t, std::pair<rank_type, uint8_t>> watchdog_need_callback{}; // <message_id, kick>
+        boost::container::map<rank_type, boost::container::map<int, uint64_t>> nodemap; // node - workers (progress)
+        boost::container::map<uint32_t, std::pair<rank_type, int>> watchdog_need_callback{}; // <message_id, <node, kick_number>>
+        boost::container::vector<int> ready_node;
 
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
         std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread rank: " << boost::this_thread::get_id() << std::endl;
@@ -394,30 +397,46 @@ int main(int argc, const char* argv[]) {
                     std::cout << "[debug: " << world.rank() << "] Watchod goes a sleep..." << std::endl;
                 }};
 
-                CallBackTimer watchdog;
-                watchdog.start(boost::chrono::milliseconds(5000), watchdog_implementation);
+//                CallBackTimer watchdog;
+//                watchdog.start(boost::chrono::milliseconds(5000), watchdog_implementation);
 
                 boost::function<void(void)> pinger_implementation{[&](void) -> void {
                     // TODO: similar code used in init... don't copy code!!!
                     for (int i = 1; i < world.size(); i++) {
-                        std::cout << "[debug: " << world.rank() << "] " << "Pinger: sending worker ping to: " << i << std::endl;
-                        auto msg_id = mpi_message_id++;
-                        send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::PING, true, "?"});
+                        if (std::find(ready_node.begin(), ready_node.end(), i) != ready_node.end()) {
+                            auto it = std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(),
+                                                   [&](const auto &e) {
+                                                       return (e.second).first == i;
+                                                   });
+                            if (it == watchdog_need_callback.end()) {
+//                        std::cout << "[debug: " << world.rank() << "] " << "Pinger: sending worker ping to: " << i << std::endl;
+                                auto msg_id = mpi_message_id++;
+                                send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::PING, true, "?"});
 
-                        // TODO: watchdog register mechanizm
-                        if (watchdog_need_callback.size() > 0){
-                            if (watchdog_need_callback.find(msg_id) == watchdog_need_callback.end())
-                                watchdog_need_callback[msg_id] = std::make_pair(i, 0);
-                            else
-                                throw std::runtime_error{"Message already registered in Watchdog!"};
-                        }else
-                            watchdog_need_callback[msg_id] = std::make_pair(i, 0);
+                                // TODO: watchdog register mechanizm
+                                if (watchdog_need_callback.size() > 0) {
+                                    if (watchdog_need_callback.find(msg_id) == watchdog_need_callback.end())
+                                        watchdog_need_callback[msg_id] = std::make_pair(i, 0);
+                                    else
+                                        throw std::runtime_error{"Message already registered in Watchdog!"};
+                                } else
+                                    watchdog_need_callback[msg_id] = std::make_pair(i, 0);
 
-                        std::cout << "[debug: " << world.rank() << "] " << "Watchdog registered message with id: " << msg_id << " for rank: " << i << std::endl;
+//                        std::cout << "[debug: " << world.rank() << "] " << "Watchdog registered message with id: " << msg_id << " for rank: " << i << std::endl;
+
+                            } else {
+//                                std::cout << "[debug: " << world.rank() << "] kick!!" << std::endl;
+//                                std::cout << "aaaa " << watchdog_need_callback.size() << "\n";
+//                                for (auto t : watchdog_need_callback) {
+//                                    std::cout << "{" << t.first << ", " << t.second.first << ", " << t.second.second
+//                                              << "}\n";
+//                                }
+                            }
+                        }
                     }
                 }};
                 CallBackTimer pinger;
-                pinger.start(boost::chrono::milliseconds(1000), pinger_implementation);
+                pinger.start(boost::chrono::milliseconds(2000), pinger_implementation);
 
 
                 auto message_processing = [&] {
@@ -427,7 +446,7 @@ int main(int argc, const char* argv[]) {
                         std::cout << "      {" << "id: " << msg.id
                                   << ", sender: " << msg.sender
                                   << ", receiver: " << msg.receiver
-                                  << ", event: " << std::to_string(static_cast<uint8_t>(msg.event))
+                                  << ", event: " << std::to_string(static_cast<int>(msg.event))
                                   << ", data: " << msg.data
                                   << ", need_response: " << msg.need_respond
                                   << "}" << std::endl;
@@ -442,18 +461,20 @@ int main(int argc, const char* argv[]) {
                                     throw std::runtime_error{"Cannot get message_to optional!"};
 
                                 std::cout << "[debug: " << world.rank() << "]: Received CALLBACK message with id: " << msg.id << " for {msg_id: " << callback_msg_id.message_id << ", event: " << std::to_string(
-                                        static_cast<uint8_t>(callback_msg_id.event)) << "} form rank: " << msg.sender << std::endl;
+                                        static_cast<int>(callback_msg_id.event)) << "} form rank: " << msg.sender << std::endl;
 
                                 // TODO: unregister message form watchdog
+                                std::cout << "// " << watchdog_need_callback.size() << "\n";
                                 auto watchdog_element_iterator = watchdog_need_callback.find(callback_msg_id.message_id);
                                 if (watchdog_element_iterator != watchdog_need_callback.end()) {
                                     watchdog_need_callback.erase(watchdog_element_iterator);
                                     std::cout << "[debug: " << world.rank() << "]: Watchdog unregistered message: {" << callback_msg_id.message_id << ", event: " << std::to_string(
-                                            static_cast<uint8_t>(callback_msg_id.event)) << "}" << std::endl;
+                                            static_cast<int>(callback_msg_id.event)) << "}" << std::endl;
                                 }else{
                                     std::cout << "[error: " << world.rank() << "]: Watchdog could not find message: " << callback_msg_id.message_id << std::endl;
                                     // TODO: what next?
                                 }
+                                std::cout << "/// " << watchdog_need_callback.size() << "\n";
 
                                 //TODO: Process callback...
                                 switch (callback_msg_id.event){
@@ -463,18 +484,19 @@ int main(int argc, const char* argv[]) {
                                         if (nodemap.find(msg.sender) != nodemap.end())
                                             throw std::runtime_error{"Error mapping node with workers..."};
 
-                                        uint8_t workers = boost::lexical_cast<uint8_t>(msg.data);
+                                        int workers = std::atoi(msg.data.c_str());
 
                                         std::cout << "[debug: " << world.rank() << "]: Setting number of workers for node: " << msg.sender << " on: " << std::to_string(workers) << std::endl;
 
-                                        boost::container::map<uint8_t, uint64_t> temp{};
-                                        for (uint8_t i = 0; i < workers; i++){
+                                        boost::container::map<int, uint64_t> temp{};
+                                        for (int i = 0; i < workers; i++){
                                             temp[i] = 0;
                                         }
 
-                                        assert(static_cast<uint8_t>(temp.size()) == workers);
+                                        assert(static_cast<int>(temp.size()) == workers);
 
                                         nodemap[msg.sender] = temp;
+                                        ready_node.push_back(msg.sender);
 
                                     }break;
 
@@ -511,10 +533,10 @@ int main(int argc, const char* argv[]) {
 
                                         assert(report_mapped.size() == nodemap[msg.sender].size());
 
-                                        boost::container::map<uint8_t, uint64_t>& pingmap = nodemap[msg.sender];
+                                        boost::container::map<int, uint64_t>& pingmap = nodemap[msg.sender];
 
                                         for (const auto& e : report_mapped){
-                                            uint8_t index = boost::lexical_cast<uint8_t>(e.first);
+                                            int index = boost::lexical_cast<int>(e.first);
                                             uint64_t value = boost::lexical_cast<uint64_t>(e.second);
 
                                             if (pingmap.find(index) == pingmap.end())
@@ -629,7 +651,7 @@ int main(int argc, const char* argv[]) {
             bool isKilled = false;
 
             auto init_worker_threads = [&]{
-                for (uint8_t i = 0; i < avaiable_threads; i++){
+                for (int i = 0; i < avaiable_threads; i++){
                     std::cout << "[debug: " << world.rank() << "] Preparing syscom for Worker for thread: " << i << std::endl;
                     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> sc = boost::make_shared<boost::lockfree::spsc_queue<SysComMessage>>(128);
                     syscom_thread.push_back(sc);
@@ -650,7 +672,7 @@ int main(int argc, const char* argv[]) {
 
                 // TODO: abstract PING handler!
                 MpiMessage ping_msg;
-                boost::container::map<uint8_t, uint64_t> ping_info{};
+                boost::container::map<int, uint64_t> ping_info; // <worker, key_value>
 
                 while (true) {
 
@@ -658,11 +680,12 @@ int main(int argc, const char* argv[]) {
 
                     while (receive_queue.pop(msg)) {
                         std::cout << "[debug: " << world.rank() << "]: Processing... (received " << ++received << ") MpiMessage: \n";
-                        std::cout << "      {" << "sender: " << msg.receiver << ", data: " << msg.data << "}" << std::endl;
+                        std::cout << "      {" << "sender: " << msg.sender << ", data: " << msg.data << "}" << std::endl;
 
                         // TODO: message processing logic class
                         switch (msg.event){
                             case MpiMessage::Event::PING: {
+                                std::cout << "[debug: " << world.rank() << "]: Processing PING request, sending PING request to workers SYSCOM." << std::endl;
                                 int i = 0;
                                 for (auto& comm : syscom_thread){
                                     SysComMessage syscom_msg{(*syscom_message_counter_ptr)++, i++, SysComMessage::Event::PING, true, "???"};
@@ -722,7 +745,7 @@ int main(int argc, const char* argv[]) {
 
                                 std::cout << "[debug: " << world.rank() << "] SysCom: CALLBACK EVENT: "
                                           << "{rank:" << sys_msg.rank  << " respons to: {message_id: " << cb.message_id << ", type: " << std::to_string(
-                                        static_cast<uint8_t>(cb.event)) << "}" << ", data: " << sys_msg.data << "}" << std::endl;
+                                        static_cast<int>(cb.event)) << "}" << ", data: " << sys_msg.data << "}" << std::endl;
 
                                 switch (cb.event){
                                     case SysComMessage::Event::PING: {
@@ -730,19 +753,26 @@ int main(int argc, const char* argv[]) {
 
                                         // TODO: abstract PING registration logic to class
                                         if (ping_info.size() == avaiable_threads - 1){
+                                            std::cout << "[debug: " << world.rank() << "] dupa! " << "\n";
 
                                             if (ping_info.find(sys_msg.rank) == ping_info.end())
                                                 ping_info[sys_msg.rank] = static_cast<uint64_t>(std::atoll(sys_msg.data.c_str()));
-                                            else
-                                                throw std::runtime_error{"Ping info contains element for this key already!"};
+                                            else {
+                                                std::cout << "!@! " << sys_msg.rank << "\n";
+                                                for (auto& e : ping_info){
+                                                    std::cout << "!!! " << e.first << " " << e.second << "\n";
+                                                }
+                                                throw std::runtime_error{
+                                                        "Ping info contains element for this key already! 0x002"};
+                                            }
 
                                             std::stringstream report;
                                             for (const auto& element : ping_info){
                                                 report << element.first << ":"<< element.second << ' ';
                                             }
                                             std::string report_str = report.str();
-                                            assert(report_str[report_str.length()] == ' ');
-                                            report_str.erase(report_str.begin() + report_str.length()); //remove last space
+                                            assert(std::isspace(report_str.back()));
+                                            report_str.erase(report_str.begin() + report_str.length() - 1);
 
                                             std::cout << "[debug: " << world.rank() << "] SysCom: Processing CALLBACK event for PING: " << sys_msg.rank << ", sending data: {" << report_str << "}" << std::endl;
 
@@ -752,10 +782,12 @@ int main(int argc, const char* argv[]) {
                                             ping_info.clear();
 
                                         }else{
-                                            if (ping_info.find(sys_msg.rank) == ping_info.end())
-                                                ping_info[sys_msg.rank] = static_cast<uint64_t>(std::atoll(sys_msg.data.c_str()));
-                                            else
-                                                throw std::runtime_error{"Ping info contains element for this key already!"};
+                                            if (ping_info.find(sys_msg.rank) == ping_info.end()) {
+                                                std::cout << "^^ " << sys_msg.rank  << " syscom: " << syscom->read_available() << "\n";
+                                                ping_info[sys_msg.rank] = static_cast<uint64_t>(std::atoll(
+                                                        sys_msg.data.c_str()));
+                                            }else
+                                                throw std::runtime_error{"Ping info contains element for this key already! 0x001"};
                                         }
 
                                     }break;
@@ -765,8 +797,9 @@ int main(int argc, const char* argv[]) {
 
                                     }break;
 
-                                    default:
-                                        break;
+                                    default:{
+                                        std::cout << "[error: " << world.rank() << "] Unknow SYSCOM message!" << std::endl;
+                                    }break;
                                 }
 
                             }break;
