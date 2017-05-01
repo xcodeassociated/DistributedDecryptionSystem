@@ -50,7 +50,9 @@ struct MpiMessage{
         INIT = 1,
         PING = 2,
         FOUND = 3,
-        KILL = 4
+        KILL = 4,
+        SLAVE_DONE = 5,
+        SLAVE_REARRANGE = 6
     };
 
     struct Callback{
@@ -115,9 +117,6 @@ public:
     syscom_message_counter() = default;
     syscom_message_counter(uint32_t value) : counter{value} {}
 
-    void increment(){
-        this->counter.store(this->counter.load() + 1);
-    }
     auto operator++() -> uint32_t{
         return this->counter++;
     }
@@ -135,11 +134,13 @@ public:
 struct SysComMessage{
     using DataType = std::string;
 
-    enum class Event : int  {
+    enum class Event : int {
         CALLBACK = 0,
         KEY_FOUND = 1,
         INTERRUPT = 2,
-        PING = 3
+        PING = 3,
+        WORKER_DONE = 4,
+        WORKER_REARRANGE = 5
     };
 
     struct Callback{
@@ -224,6 +225,7 @@ private:
     int id = 0;
     KeyRange range{0, 0};
     bool work = false;
+    bool process = false;
     uint64_t current_key = 0;
     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_tx_ptr = nullptr;
     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_rx_ptr = nullptr;
@@ -263,8 +265,8 @@ public:
         return this->range;
     }
 
-    void process() {
-        while (this->work){
+    void worker_process() {
+        while (this->process){
 
             // check if there's any new syscom message... and process message if available
             SysComMessage sys_msg;
@@ -274,8 +276,18 @@ public:
                         SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::CALLBACK, false, std::to_string(this->current_key), SysComMessage::Callback{sys_msg.id, sys_msg.event}};
                         this->syscom_tx_ptr->push(syscom_msg);
                     }break;
+
+                    case SysComMessage::Event::WORKER_REARRANGE: {
+                        assert(!this->work);
+
+                        this->work = true;
+                        // TODO: new key range to process...
+                    }break;
+
                     case SysComMessage::Event::INTERRUPT:{
+                        // Thread is about to finish it's existance...
                         this->work = false;
+                        this->finish();
                         SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::CALLBACK, false, "interrupt data here...", SysComMessage::Callback{sys_msg.id, sys_msg.event}};
                         this->syscom_tx_ptr->push(syscom_msg);
                     }break;
@@ -285,23 +297,41 @@ public:
                 }
             }
 
-            // go back to work...
-            this->current_key++;
+            if (this->work) {
+                if (this->current_key == this->range.end) {
+                    this->work = false;
+                    SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::WORKER_DONE, false, "done"};
+                    this->syscom_tx_ptr->push(syscom_msg);
+                }else {
+                    // ...
+                    this->current_key++;
+                }
+            }
 
             boost::this_thread::sleep_for(boost::chrono::nanoseconds(5));
         }
     }
 
-    //TODO: CryptoCPP
+    // TODO: CryptoCPP
     void start(){
-        if (!this->work)
-            this->work = true;
+        if (!this->process) {
+            this->process = true;
 
-       this->process();
+            if (!this->work)
+                this->work = true;
+
+            this->current_key = this->range.begin;
+            this->worker_process();
+        } else
+            throw std::runtime_error{"Worker already started! 0x0004"};
     }
     
     void stop(){
         this->work = true;
+    }
+
+    void finish(){
+        this->process = false;
     }
 
 };
@@ -316,7 +346,7 @@ int Options::foo = 0;
 
 int main(int argc, const char* argv[]) {
     std::cout << std::boolalpha;
-    std::cout.sync_with_stdio(false);
+    std::cout.sync_with_stdio(true);
     
     po::options_description desc("DDS Options");
     desc.add_options()
@@ -343,7 +373,7 @@ int main(int argc, const char* argv[]) {
     mpi::communicator world;
 
     if (world.rank() == 0) {
-        
+
         boost::lockfree::spsc_queue<MpiMessage> receive_queue(128);
         boost::lockfree::spsc_queue<MpiMessage> send_queue(128);
         
@@ -532,9 +562,11 @@ int main(int argc, const char* argv[]) {
                             case MpiMessage::Event::FOUND:{
 
                             }break;
-                            case MpiMessage::Event::PING:{
-
+                            case MpiMessage::Event::SLAVE_DONE:{
+                                std::cout << "[info: " << world.rank() << "]: Master received SLAVE_DONE from: " << msg.sender << std::endl;
+                                // TODO: mark slave node as offline - by intention. (not because of slave is down exidently)
                             }break;
+
                             default:{
                                 // TODO: invalide message!
                             }break;
@@ -617,7 +649,13 @@ int main(int argc, const char* argv[]) {
             boost::container::vector<boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>>> syscom_thread_tx{};
             boost::container::vector<boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>>> syscom_thread_rx{};
 
-            boost::container::vector<boost::thread> thread_array{};
+            boost::container::vector<boost::shared_ptr<boost::thread>> thread_array{};
+
+            boost::container::vector<boost::shared_ptr<Worker>> worker_pointers{};
+
+            boost::container::vector<std::pair<int, bool>> worker_up{};
+
+            boost::container::vector<Worker::KeyRange> new_key_ranges{};
 
             bool isInit = false;
             bool isKilled = false;
@@ -639,12 +677,14 @@ int main(int argc, const char* argv[]) {
 
                     std::cout << "[debug: " << world.rank() << "] Preparing Worker for thread: " << i << std::endl;
 
-                    auto thread_task = [i, sc_rx, sc_tx, &syscom_message_counter_ptr]{
-                        Worker worker(i, Worker::KeyRange{0, 1000}, sc_rx, sc_tx, syscom_message_counter_ptr);
-                        worker.start();
+                    auto thread_task = [i, sc_rx, sc_tx, syscom_message_counter_ptr, &worker_pointers]{
+                        boost::shared_ptr<Worker> worker_ptr = boost::make_shared<Worker>(i, Worker::KeyRange{0, 2000000}, sc_rx, sc_tx, syscom_message_counter_ptr);
+                        worker_pointers.push_back(worker_ptr);
+                        worker_ptr->start();
                     };
-
-                    thread_array.emplace_back(thread_task);
+                    boost::shared_ptr<boost::thread> worker_thread_ptr = boost::make_shared<boost::thread>(thread_task);
+                    thread_array.push_back(worker_thread_ptr);
+                    worker_up.emplace_back(i, true);
                 }
             };
 
@@ -713,30 +753,58 @@ int main(int argc, const char* argv[]) {
                                                 "Ping info contains element for this key already! 0x001"};
                                 }
 
-                            }
-                                break;
+                            }break;
 
                             case SysComMessage::Event::INTERRUPT: {
-                                std::cout << "[debug: " << world.rank()
-                                          << "] SysCom: Processing CALLBACK event for INTERRUPT... "
-                                          << std::endl;
+                                std::cout << "[debug: " << world.rank() << "] SysCom: Processing CALLBACK event for INTERRUPT form Worker: " << sys_msg.rank << std::endl;
+                                std::cout << "[debug: " << world.rank() << "] SysCom: Worker: " << sys_msg.rank << " is turned off!" << std::endl;
 
-                            }
-                                break;
+                                auto it = std::find(worker_up.begin(), worker_up.end(), std::pair<int, bool>(sys_msg.rank, true));
+                                if (it == worker_up.end())
+                                    throw std::runtime_error{"0x003"};
+                                *it = std::make_pair(sys_msg.rank, false);
+
+                                int still_up = 0;
+                                for (const auto& element : worker_up){
+                                    if (element.second)
+                                        still_up++;
+                                }
+
+                                if (still_up > 0)
+                                    std::cout << "[debug: " << world.rank() << "] SysCom: There are(is) still: " << still_up << " worker(s) up." << std::endl;
+                                else {
+                                    std::cout << "[debug: " << world.rank() << "] SysCom: There are NO workers up! Slave node: " << world.rank()  << " is about to close - Sending message to Master" << std::endl;
+
+                                    send_queue.push({mpi_message_id++, 0, world.rank(), MpiMessage::Event::SLAVE_DONE, false, "slave_done"});
+                                    // TODO: if there are no workers up - slave goes down
+                                }
+                            }break;
 
                             default: {
-                                std::cout << "[error: " << world.rank()
-                                          << "] Unknow SYSCOM CALLBACK message!" << std::endl;
-                            }
-                                break;
+                                std::cout << "[error: " << world.rank() << "] Unknow SYSCOM CALLBACK message!" << std::endl;
+                            }break;
                         }
 
-                    }
-                        break;
+                    }break;
+
+                    case SysComMessage::Event::WORKER_DONE: {
+                        std::cout << "[debug: " << world.rank() << "] SysCom: Processing *** WORKER DONE for Worker thread: " << sys_msg.rank << " ***"<< std::endl;
+
+                        if (new_key_ranges.size() > 0){
+                            std::cout << "[debug: " << world.rank() << "] SysCom: Assigning a new key range to worker..." << std::endl;
+                            // TODO: if the worker has finished it's own job, assigne a new key range to process...
+                        }else {
+                            std::cout << "[debug: " << world.rank() << "] SysCom: There is no need for handle new key range. Sending INTERRUPT to worker: "
+                                      << sys_msg.rank << " because the thread has finished." << std::endl;
+
+                            SysComMessage syscom_msg{(*syscom_message_counter_ptr)++, sys_msg.rank, SysComMessage::Event::INTERRUPT, true, "interrupt"};
+                            syscom_thread_tx[sys_msg.rank]->push(syscom_msg);
+                        }
+                    }break;
+
                     default: {
                         std::cout << "[error: " << world.rank() << "] Unknow SYSCOM message!" << std::endl;
-                    }
-                        break;
+                    }break;
                 }
             };
 
