@@ -286,7 +286,7 @@ public:
 
                     case SysComMessage::Event::INTERRUPT:{
                         // Thread is about to finish it's existance...
-                        this->work = false;
+                        this->stop();
                         this->finish();
                         SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::CALLBACK, false, "interrupt data here...", SysComMessage::Callback{sys_msg.id, sys_msg.event}};
                         this->syscom_tx_ptr->push(syscom_msg);
@@ -299,7 +299,8 @@ public:
 
             if (this->work) {
                 if (this->current_key == this->range.end) {
-                    this->work = false;
+                    this->stop();
+
                     SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::WORKER_DONE, false, "done"};
                     this->syscom_tx_ptr->push(syscom_msg);
                 }else {
@@ -327,7 +328,7 @@ public:
     }
     
     void stop(){
-        this->work = true;
+        this->work = false;
     }
 
     void finish(){
@@ -340,18 +341,21 @@ auto constexpr receive_thread_loop_delay    = 100000u;         /* ns -> 0.1ms */
 auto constexpr process_message_loop_delay   = 10000000u;       /* ns  -> 10ms */
 
 struct Options{
-    static int foo;
+    uint64_t absolute_key_from   = 0;
+    uint64_t absolute_key_to     = 0;
 };
-int Options::foo = 0;
 
 int main(int argc, const char* argv[]) {
     std::cout << std::boolalpha;
     std::cout.sync_with_stdio(true);
-    
+
+    Options options;
+
     po::options_description desc("DDS Options");
     desc.add_options()
             ("help", "produce help MpiMessage")
-            ("foo", po::value<int>(), "set `foo` level");
+            ("from", po::value<uint64_t>(), "set key range BEGIN value")
+            ("to", po::value<uint64_t>(), "set key range END value");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -361,18 +365,55 @@ int main(int argc, const char* argv[]) {
         std::cout << desc << std::endl;
         return 1;
     }
-    if (vm.count("foo")) {
-        Options::foo = vm["foo"].as<int>();
-        std::cout << "[debug] PreMPI: `foo` level was set to: " << Options::foo << std::endl;
-    } else {
-        std::cout << "[debug] PreMPI: `foo` level was not set! " << std::endl;
+
+    if (vm.count("from"))
+        options.absolute_key_from = vm["from"].as<uint64_t>();
+    else {
+        std::cerr << "Set min range!" << std::endl;
         return 1;
     }
-    
+
+    if (vm.count("to"))
+        options.absolute_key_to = vm["to"].as<uint64_t>();
+    else {
+        std::cerr << "Set max range!" << std::endl;
+        return 1;
+    }
+
+    assert(options.absolute_key_from >= 0 && options.absolute_key_to > 0);
+    assert(options.absolute_key_from < options.absolute_key_to);
+
     mpi::environment env(mpi::threading::multiple, true);
     mpi::communicator world;
 
     if (world.rank() == 0) {
+        std::cout << "[debug: " << world.rank() << "] Initial key range: [" << options.absolute_key_from << ", " << options.absolute_key_to << "]" << std::endl;
+
+        uint64_t range = options.absolute_key_to - options.absolute_key_from;
+        double ratio = static_cast<double>(range) / static_cast<double>(world.size() - 1);
+        boost::container::vector<std::pair<int, int>> ranges{};
+        uint64_t begin, next;
+        for (int i = 1; i < world.size(); i++){
+            if (i == 1)
+                begin = options.absolute_key_from;
+            else
+                begin = next + 1;
+
+            next = static_cast<uint64_t>(ratio) * i;
+            ranges.emplace_back(begin, next);
+        }
+        std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1) << "duuupa " << ratio << " " << std::roundf(ratio) << "\n";
+        if (std::floor(ratio) != ratio) {
+            double integer_part, decimal_part = std::modf(ratio, &integer_part);
+            double precission_diff = decimal_part * static_cast<double>(world.size() - 1);
+            double compensation = std::ceil(precission_diff);
+            ranges.back() = {ranges.back().first, (ranges.back().second + static_cast<uint64_t>(compensation))};
+        }
+
+        std::cout << "[debug: " << world.rank() << "] Calculated ranges: " << std::endl;
+        int i = 1;
+        for (const auto& e : ranges)
+            std::cout << "[debug: " << world.rank() << "]\t(" << i++ << "): " << "[" << e.first << ", " << e.second << "]" << std::endl;
 
         boost::lockfree::spsc_queue<MpiMessage> receive_queue(128);
         boost::lockfree::spsc_queue<MpiMessage> send_queue(128);
@@ -640,7 +681,9 @@ int main(int argc, const char* argv[]) {
 
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
         std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread rank: " << boost::this_thread::get_id() << std::endl;
-        
+
+        bool isAlive = true;
+
         auto process_thread_implementation = [&]{
             std::cout << "[debug: " << world.rank() << "] Process thread rank: " <<  boost::this_thread::get_id() <<  " has been triggered!" << std::endl;
 
@@ -653,12 +696,12 @@ int main(int argc, const char* argv[]) {
 
             boost::container::vector<boost::shared_ptr<Worker>> worker_pointers{};
 
-            boost::container::vector<std::pair<int, bool>> worker_up{};
+            boost::container::vector<std::pair<int, bool>> worker_alive{};
+            boost::container::vector<std::pair<int, bool>> worker_running{};
 
             boost::container::vector<Worker::KeyRange> new_key_ranges{};
 
             bool isInit = false;
-            bool isKilled = false;
 
             // TODO: abstract PING handler!
             MpiMessage ping_msg;
@@ -684,11 +727,14 @@ int main(int argc, const char* argv[]) {
                     };
                     boost::shared_ptr<boost::thread> worker_thread_ptr = boost::make_shared<boost::thread>(thread_task);
                     thread_array.push_back(worker_thread_ptr);
-                    worker_up.emplace_back(i, true);
+
+                    worker_alive.emplace_back(i, true);
+                    worker_running.emplace_back(i, true);
                 }
+                assert(worker_alive.size() > 0 && worker_running.size() > 0 && worker_alive.size() == worker_running.size());
             };
 
-            auto process_syscom_message = [&](SysComMessage sys_msg) {
+            auto process_syscom_message = [&](SysComMessage& sys_msg) {
                 switch (sys_msg.event) {
                     // TODO: When ping is trigger by modulo - send message to master node or store last key for faster access? Something to concider...
                     case SysComMessage::Event::PING: {
@@ -759,24 +805,26 @@ int main(int argc, const char* argv[]) {
                                 std::cout << "[debug: " << world.rank() << "] SysCom: Processing CALLBACK event for INTERRUPT form Worker: " << sys_msg.rank << std::endl;
                                 std::cout << "[debug: " << world.rank() << "] SysCom: Worker: " << sys_msg.rank << " is turned off!" << std::endl;
 
-                                auto it = std::find(worker_up.begin(), worker_up.end(), std::pair<int, bool>(sys_msg.rank, true));
-                                if (it == worker_up.end())
+                                auto it = std::find(worker_alive.begin(), worker_alive.end(), std::pair<int, bool>(sys_msg.rank, true));
+                                if (it == worker_alive.end())
                                     throw std::runtime_error{"0x003"};
                                 *it = std::make_pair(sys_msg.rank, false);
 
-                                int still_up = 0;
-                                for (const auto& element : worker_up){
+                                int still_alive = 0;
+                                for (const auto& element : worker_alive){
                                     if (element.second)
-                                        still_up++;
+                                        still_alive++;
                                 }
 
-                                if (still_up > 0)
-                                    std::cout << "[debug: " << world.rank() << "] SysCom: There are(is) still: " << still_up << " worker(s) up." << std::endl;
+                                if (still_alive > 0)
+                                    std::cout << "[debug: " << world.rank() << "] SysCom: There are still: " << still_alive << " workers ALIVE. " << std::endl;
                                 else {
                                     std::cout << "[debug: " << world.rank() << "] SysCom: There are NO workers up! Slave node: " << world.rank()  << " is about to close - Sending message to Master" << std::endl;
 
                                     send_queue.push({mpi_message_id++, 0, world.rank(), MpiMessage::Event::SLAVE_DONE, false, "slave_done"});
                                     // TODO: if there are no workers up - slave goes down
+
+                                    isAlive = false;
                                 }
                             }break;
 
@@ -790,15 +838,41 @@ int main(int argc, const char* argv[]) {
                     case SysComMessage::Event::WORKER_DONE: {
                         std::cout << "[debug: " << world.rank() << "] SysCom: Processing *** WORKER DONE for Worker thread: " << sys_msg.rank << " ***"<< std::endl;
 
+                        auto it = std::find_if(worker_running.begin(), worker_running.end(), [&](const auto& e) {
+                            return e.first == sys_msg.rank && e.second == true;
+                        });
+                        if (it == worker_running.end()) {
+                            for (auto e : worker_running) std::cout << e.first << "  " << e.second << "\n";
+                            throw std::runtime_error{"0x005"};
+                        }
+
+                        *it = std::make_pair(sys_msg.rank, false);
+
+                        int still_running = 0;
+                        for (const auto& element : worker_alive){
+                            if (element.second)
+                                still_running++;
+                        }
+
                         if (new_key_ranges.size() > 0){
                             std::cout << "[debug: " << world.rank() << "] SysCom: Assigning a new key range to worker..." << std::endl;
-                            // TODO: if the worker has finished it's own job, assigne a new key range to process...
+                            // TODO: if the worker has finished it's own job, assigne a new key range to process if there is one...
                         }else {
-                            std::cout << "[debug: " << world.rank() << "] SysCom: There is no need for handle new key range. Sending INTERRUPT to worker: "
-                                      << sys_msg.rank << " because the thread has finished." << std::endl;
+                            // wait until last worker is processing... if the last has finished and there's no new key range to process kill workers
+                            if (still_running == 0) {
+                                std::cout << "[debug: " << world.rank()
+                                          << "] SysCom: There is no need for handle new key range & all workers has finished. Sending INTERRUPT to ALL workers."
+                                          << std::endl;
 
-                            SysComMessage syscom_msg{(*syscom_message_counter_ptr)++, sys_msg.rank, SysComMessage::Event::INTERRUPT, true, "interrupt"};
-                            syscom_thread_tx[sys_msg.rank]->push(syscom_msg);
+                                int i = 0;
+                                for (auto& comm : syscom_thread_tx){
+                                    SysComMessage syscom_msg{(*syscom_message_counter_ptr)++, i++, SysComMessage::Event::INTERRUPT, true, "interrupt"};
+                                    comm->push(syscom_msg);
+                                }
+
+                            }else{
+                                std::cout << "[debug: " << world.rank() << "] SysCom: There are still: " << still_running << " workers working." << std::endl;
+                            }
                         }
                     }break;
 
@@ -811,7 +885,7 @@ int main(int argc, const char* argv[]) {
             auto message_processing = [&] {
                 uint64_t received = 0;
 
-                while (true) {
+                while (isAlive) {
 
                     MpiMessage msg;
 
@@ -859,7 +933,8 @@ int main(int argc, const char* argv[]) {
                             }
                                 break;
                             case MpiMessage::Event::KILL: {
-                                if (!isKilled) {
+                                if (isAlive) {
+                                    isAlive = false;
                                     std::stringstream ss;
                                     ss << "KILL << SENDING BACK FROM: " << world.rank() << " >>" << std::endl;
                                     data_type data{ss.str()};
@@ -896,7 +971,7 @@ int main(int argc, const char* argv[]) {
         boost::thread process_thread(process_thread_implementation);
         process_thread.detach();
         
-        while (true) {
+        while (isAlive) {
             boost::optional<mpi::status> stat = world.iprobe(mpi::any_source, mpi::any_tag);
             if (stat){
                 std::cout << "[debug: " << world.rank() << "] Receive thread has probed a MpiMessage..."<< std::endl;
@@ -918,6 +993,9 @@ int main(int argc, const char* argv[]) {
             }
             boost::this_thread::sleep_for(boost::chrono::nanoseconds(receive_thread_loop_delay));
         }
+
+        std::cout << "[debug: " << world.rank() << "] Slave: " << world.rank() << " clean up." << std::endl;
+        std::cout << "[debug: " << world.rank() << "] *** Slave: " << world.rank() << " has FINISHED! ***" << std::endl;
     }
     
     return EXIT_SUCCESS;
