@@ -31,6 +31,8 @@
 #include <cryptopp/modes.h>
 #include <cryptopp/aes.h>
 #include <cryptopp/filters.h>
+#include <sys/proc_info.h>
+
 #endif
     
 namespace mpi = boost::mpi;
@@ -337,6 +339,41 @@ public:
 
 };
 
+auto calculate_range = [](uint64_t absolute_key_from, uint64_t absolute_key_to, int size)
+        -> boost::container::vector<std::pair<uint64_t, uint64_t>> {
+
+    assert(absolute_key_from < absolute_key_to);
+    uint64_t range = absolute_key_to - absolute_key_from;
+    double ratio = static_cast<double>(range) / static_cast<double>(size);
+    boost::container::vector<std::pair<uint64_t, uint64_t>> ranges{};
+
+    uint64_t begin = 0, next = 0;
+    for (int i = 0; i < size; i++){
+        if (i == 0) {
+            begin = absolute_key_from;
+            next = begin + static_cast<uint64_t>(ratio);
+        } else {
+            begin = next + 1;
+            next = next + static_cast<uint64_t>(ratio);
+        }
+
+        ranges.emplace_back(begin, next);
+    }
+
+    if (std::floor(ratio) != ratio) {
+        double integer_part, decimal_part = std::modf(ratio, &integer_part);
+        double precission_diff = decimal_part * static_cast<double>(size);
+        double compensation = std::ceil(precission_diff);
+        ranges.back() = {ranges.back().first, (ranges.back().second + static_cast<uint64_t>(compensation))};
+    }
+
+    if (ranges.back().second > absolute_key_to)
+        ranges.back().second = absolute_key_to;
+
+    return ranges;
+};
+
+
 auto constexpr receive_thread_loop_delay    = 100000u;         /* ns -> 0.1ms */
 auto constexpr process_message_loop_delay   = 10000000u;       /* ns  -> 10ms */
 
@@ -387,33 +424,16 @@ int main(int argc, const char* argv[]) {
     mpi::communicator world;
 
     if (world.rank() == 0) {
+
         std::cout << "[debug: " << world.rank() << "] Initial key range: [" << options.absolute_key_from << ", " << options.absolute_key_to << "]" << std::endl;
 
-        uint64_t range = options.absolute_key_to - options.absolute_key_from;
-        double ratio = static_cast<double>(range) / static_cast<double>(world.size() - 1);
-        boost::container::vector<std::pair<int, int>> ranges{};
-        uint64_t begin, next;
-        for (int i = 1; i < world.size(); i++){
-            if (i == 1)
-                begin = options.absolute_key_from;
-            else
-                begin = next + 1;
+        boost::container::vector<std::pair<uint64_t, uint64_t>> ranges =
+                boost::move(calculate_range(options.absolute_key_from, options.absolute_key_to, (world.size() - 1)));
 
-            next = static_cast<uint64_t>(ratio) * i;
-            ranges.emplace_back(begin, next);
-        }
-        std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1) << "duuupa " << ratio << " " << std::roundf(ratio) << "\n";
-        if (std::floor(ratio) != ratio) {
-            double integer_part, decimal_part = std::modf(ratio, &integer_part);
-            double precission_diff = decimal_part * static_cast<double>(world.size() - 1);
-            double compensation = std::ceil(precission_diff);
-            ranges.back() = {ranges.back().first, (ranges.back().second + static_cast<uint64_t>(compensation))};
-        }
 
         std::cout << "[debug: " << world.rank() << "] Calculated ranges: " << std::endl;
-        int i = 1;
         for (const auto& e : ranges)
-            std::cout << "[debug: " << world.rank() << "]\t(" << i++ << "): " << "[" << e.first << ", " << e.second << "]" << std::endl;
+            std::cout << "[debug: " << world.rank() << "] \t[" << e.first << ", " << e.second << "]" << std::endl;
 
         boost::lockfree::spsc_queue<MpiMessage> receive_queue(128);
         boost::lockfree::spsc_queue<MpiMessage> send_queue(128);
@@ -424,6 +444,7 @@ int main(int argc, const char* argv[]) {
         boost::atomic_uint32_t mpi_message_id{0};
 
         boost::container::map<rank_type, boost::container::map<int, uint64_t>> nodemap; // node - workers (progress)
+        boost::container::map<rank_type, boost::container::vector<std::pair<uint64_t, uint64_t>>> nodeinfo;
         boost::container::map<uint32_t, std::pair<rank_type, int>> watchdog_need_callback{}; // <message_id, <node, kick_number>>
         boost::container::vector<int> ready_node;
 
@@ -436,13 +457,6 @@ int main(int argc, const char* argv[]) {
             uint64_t received = 0l;
             while (true){
 
-                // TODO: total key range calc
-                // TODO: prepare key ranges to send as well as modulo for workers
-                // TODO: watchdog service enable (checking if slave is up & getting current results)
-
-                // TODO: define number of checks for a message after which watchdog will disable sending messages to node.
-                // TODO: verify progress of another pings for rank... if there will be no progress between given number of pings also assume that something went wrong and disable node
-                // TODO: evry disabling of node has to trigger logic to move that filed node tasks to other nodes
                 boost::function<void(void)> watchdog_implementation{[&](void) -> void {
 //                    std::cout << "[debug: " << world.rank() << "] Watchod triggered!" << std::endl;
 //                    std::cout << "[debug: " << world.rank() << "] Watchod goes a sleep..." << std::endl;
@@ -530,6 +544,15 @@ int main(int argc, const char* argv[]) {
                                         int workers = std::atoi(msg.data.c_str());
 
                                         std::cout << "[debug: " << world.rank() << "]: Setting number of workers for node: " << msg.sender << " on: " << std::to_string(workers) << std::endl;
+                                        std::cout << "[debug: " << world.rank() << "]: Calculating Workers ranges in Master for: " << ranges[msg.sender - 1].first << " - " << ranges[msg.sender - 1].second  << std::endl;
+
+                                        boost::container::vector<std::pair<uint64_t, uint64_t>> worker_ranges =
+                                                boost::move(calculate_range(ranges[msg.sender - 1].first, ranges[msg.sender - 1].second, workers));
+
+                                        for (const auto& range : worker_ranges)
+                                            std::cout << "[debug: " << world.rank() << "] \t[" << range.first << ", " << range.second << "]" << std::endl;
+
+                                        nodeinfo[msg.sender] = boost::move(worker_ranges);
 
                                         boost::container::map<int, uint64_t> temp{};
                                         for (int i = 0; i < workers; i++){
@@ -538,7 +561,7 @@ int main(int argc, const char* argv[]) {
 
                                         assert(static_cast<int>(temp.size()) == workers);
 
-                                        nodemap[msg.sender] = temp;
+                                        nodemap[msg.sender] = boost::move(temp);
                                         ready_node.push_back(msg.sender);
 
                                     }break;
@@ -629,8 +652,13 @@ int main(int argc, const char* argv[]) {
         std::cout << "[debug: " << world.rank() << "] " << "----- Init ping pong squence: STARTS -----" << std::endl;
         for (int i = 1; i < world.size(); i++) {
             std::cout << "[debug: " << world.rank() << "] " << "Sending init data to: " << i << std::endl;
+
+            std::stringstream report;
+            report << ranges[i - 1].first << ":" << ranges[i - 1].second;
+            std::string report_str = report.str();
+
             auto msg_id = mpi_message_id++;
-            send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::INIT, true, "INIT FROM MASTER"});
+            send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::INIT, true, report_str});
 
             // TODO: watchdog register mechanizm
             if (watchdog_need_callback.size() > 0){
@@ -669,7 +697,7 @@ int main(int argc, const char* argv[]) {
         }
         
     } else {
-        
+
         boost::lockfree::spsc_queue<MpiMessage> receive_queue(128);
         boost::lockfree::spsc_queue<MpiMessage> send_queue(128);
 
@@ -699,7 +727,8 @@ int main(int argc, const char* argv[]) {
             boost::container::vector<std::pair<int, bool>> worker_alive{};
             boost::container::vector<std::pair<int, bool>> worker_running{};
 
-            boost::container::vector<Worker::KeyRange> new_key_ranges{};
+            boost::container::vector<std::pair<uint64_t, uint64_t>> worker_ranges{};
+            boost::container::vector<std::pair<uint64_t, uint64_t>> new_key_ranges{}; // ???
 
             bool isInit = false;
 
@@ -720,8 +749,8 @@ int main(int argc, const char* argv[]) {
 
                     std::cout << "[debug: " << world.rank() << "] Preparing Worker for thread: " << i << std::endl;
 
-                    auto thread_task = [i, sc_rx, sc_tx, syscom_message_counter_ptr, &worker_pointers]{
-                        boost::shared_ptr<Worker> worker_ptr = boost::make_shared<Worker>(i, Worker::KeyRange{0, 2000000}, sc_rx, sc_tx, syscom_message_counter_ptr);
+                    auto thread_task = [i, sc_rx, sc_tx, syscom_message_counter_ptr, &worker_pointers, &worker_ranges]{
+                        boost::shared_ptr<Worker> worker_ptr = boost::make_shared<Worker>(i, Worker::KeyRange{worker_ranges[i].first, worker_ranges[i].second}, sc_rx, sc_tx, syscom_message_counter_ptr);
                         worker_pointers.push_back(worker_ptr);
                         worker_ptr->start();
                     };
@@ -841,15 +870,13 @@ int main(int argc, const char* argv[]) {
                         auto it = std::find_if(worker_running.begin(), worker_running.end(), [&](const auto& e) {
                             return e.first == sys_msg.rank && e.second == true;
                         });
-                        if (it == worker_running.end()) {
-                            for (auto e : worker_running) std::cout << e.first << "  " << e.second << "\n";
+                        if (it == worker_running.end())
                             throw std::runtime_error{"0x005"};
-                        }
 
                         *it = std::make_pair(sys_msg.rank, false);
 
                         int still_running = 0;
-                        for (const auto& element : worker_alive){
+                        for (const auto& element : worker_running){
                             if (element.second)
                                 still_running++;
                         }
@@ -867,7 +894,7 @@ int main(int argc, const char* argv[]) {
                                 int i = 0;
                                 for (auto& comm : syscom_thread_tx){
                                     SysComMessage syscom_msg{(*syscom_message_counter_ptr)++, i++, SysComMessage::Event::INTERRUPT, true, "interrupt"};
-                                    comm->push(syscom_msg);
+                                    //comm->push(syscom_msg);
                                 }
 
                             }else{
@@ -914,11 +941,23 @@ int main(int argc, const char* argv[]) {
                                 break;
                             case MpiMessage::Event::INIT: {
                                 if (!isInit) {
-                                    std::cout << "[debug: " << world.rank() << "]: Init message processing..."
-                                              << std::endl;
+                                    std::cout << "[debug: " << world.rank() << "]: Init message processing..." << std::endl;
 
-                                    // TODO: devide key pool for threads...
-                                    // ...
+                                    boost::container::vector<std::string> range_str;
+                                    boost::split(range_str, msg.data, boost::is_any_of(":"));
+                                    assert(range_str.size() == 2);
+
+                                    uint64_t range_begin = boost::lexical_cast<uint64_t>(range_str[0]);
+                                    uint64_t range_end = boost::lexical_cast<uint64_t>(range_str[1]);
+
+                                    std::cout << "[debug: " << world.rank() << "]: Slave: " << world.size() << " Received range: [" << range_begin << ", " << range_end << "]" << std::endl;
+
+                                    worker_ranges = boost::move(calculate_range(range_begin, range_end, avaiable_threads));
+
+                                    std::cout << "[debug: " << world.rank() << "]: Calculating ranges for workers in SLAVE." << std::endl;
+
+                                    for (const auto& e : worker_ranges)
+                                        std::cout << "[debug: " << world.rank() << "]: \t[" << e.first << ", " << e.second << "]" << std::endl;
 
                                     init_worker_threads();
 
