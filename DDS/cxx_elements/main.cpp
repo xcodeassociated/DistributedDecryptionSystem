@@ -382,6 +382,8 @@ struct Options{
     uint64_t absolute_key_to     = 0;
 };
 
+bool isAlive = true;
+
 int main(int argc, const char* argv[]) {
     std::cout << std::boolalpha;
     std::cout.sync_with_stdio(true);
@@ -455,7 +457,7 @@ int main(int argc, const char* argv[]) {
             std::cout << "[debug: " << world.rank() << "] Process thread rank: " <<  boost::this_thread::get_id() <<  " has been triggered!" << std::endl;
             
             uint64_t received = 0l;
-            while (true){
+            while (isAlive){
 
                 boost::function<void(void)> watchdog_implementation{[&](void) -> void {
 //                    std::cout << "[debug: " << world.rank() << "] Watchod triggered!" << std::endl;
@@ -533,7 +535,7 @@ int main(int argc, const char* argv[]) {
                                     // TODO: what next?
                                 }
 
-                                //TODO: Process callback...
+                                // TODO: Process callback...
                                 switch (callback_msg_id.event){
                                     case MpiMessage::Event::INIT:{
                                         std::cout << "[info: " << world.rank() << "]: - - - - FINISHED INIT FOR node: " << msg.sender << std::endl;
@@ -628,7 +630,32 @@ int main(int argc, const char* argv[]) {
                             }break;
                             case MpiMessage::Event::SLAVE_DONE:{
                                 std::cout << "[info: " << world.rank() << "]: Master received SLAVE_DONE from: " << msg.sender << std::endl;
-                                // TODO: mark slave node as offline - by intention. (not because of slave is down exidently)
+
+                                // remove all watchdogs
+                                std::cout << "[info: " << world.rank() << "] Master removing all watchdogs events for slave: " << msg.sender << std::endl;
+
+                                for (auto it = watchdog_need_callback.cbegin(); it != watchdog_need_callback.cend(); it++){
+                                    if ((*it).second.first == msg.sender)
+                                        watchdog_need_callback.erase(it);
+                                }
+
+                                assert(std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(), [&msg](const auto& e){
+                                    return e.second.first == msg.sender;
+                                }) == watchdog_need_callback.end());
+
+                                std::cout << "[info: " << world.rank() << "] Master setting slave: " << msg.sender << " offline"<< std::endl;
+
+                                ready_node.erase(std::remove(ready_node.begin(), ready_node.end(), msg.sender));
+                                assert(std::find(ready_node.begin(), ready_node.end(), msg.sender) == ready_node.end());
+                                ready_node.shrink_to_fit();
+
+                                if (ready_node.size() > 0)
+                                    std::cout << "[info: " << world.rank() << "] There are: " << ready_node.size() << " slave nodes left" << std::endl;
+                                else {
+                                    std::cout << "[info: " << world.rank() << "] There are no running slaves left - Master is going down..." << std::endl;
+                                    isAlive = false;
+                                }
+
                             }break;
 
                             default:{
@@ -646,8 +673,7 @@ int main(int argc, const char* argv[]) {
         };
         
         boost::thread process_thread(process_thread_implementation);
-        process_thread.detach();
-        
+
         boost::this_thread::sleep_for(boost::chrono::seconds(2));
         std::cout << "[debug: " << world.rank() << "] " << "----- Init ping pong squence: STARTS -----" << std::endl;
         for (int i = 1; i < world.size(); i++) {
@@ -673,7 +699,7 @@ int main(int argc, const char* argv[]) {
         }
         std::cout << "[debug: " << world.rank() << "] " << "----- Init ping pong squence: ENDS -----" << std::endl;
         
-        while (true) {
+        while (isAlive) {
             boost::optional<mpi::status> stat = world.iprobe(mpi::any_source, mpi::any_tag);
             if (stat){
                 std::cout << "[debug: " << world.rank() << "] Receive thread has probed a MpiMessage..."<< std::endl;
@@ -695,7 +721,12 @@ int main(int argc, const char* argv[]) {
             }
             boost::this_thread::sleep_for(boost::chrono::nanoseconds(receive_thread_loop_delay));
         }
-        
+
+        process_thread.join();
+
+        std::cout << "[info: " << world.rank() << "] Master is down. " << std::endl;
+        exit(EXIT_SUCCESS);
+
     } else {
 
         boost::lockfree::spsc_queue<MpiMessage> receive_queue(128);
@@ -709,8 +740,6 @@ int main(int argc, const char* argv[]) {
 
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
         std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread rank: " << boost::this_thread::get_id() << std::endl;
-
-        bool isAlive = true;
 
         auto process_thread_implementation = [&]{
             std::cout << "[debug: " << world.rank() << "] Process thread rank: " <<  boost::this_thread::get_id() <<  " has been triggered!" << std::endl;
@@ -850,10 +879,14 @@ int main(int argc, const char* argv[]) {
                                 else {
                                     std::cout << "[debug: " << world.rank() << "] SysCom: There are NO workers up! Slave node: " << world.rank()  << " is about to close - Sending message to Master" << std::endl;
 
-                                    send_queue.push({mpi_message_id++, 0, world.rank(), MpiMessage::Event::SLAVE_DONE, false, "slave_done"});
-                                    // TODO: if there are no workers up - slave goes down
+                                    int i = 0;
+                                    for (auto& thread_ptr : thread_array) {
+                                        worker_pointers[i++].reset();
+                                        thread_ptr->join();
+                                        thread_ptr.reset();
+                                    }
 
-                                    isAlive = false;
+                                    send_queue.push({mpi_message_id++, 0, world.rank(), MpiMessage::Event::SLAVE_DONE, false, "slave_done"});
                                 }
                             }break;
 
@@ -894,7 +927,7 @@ int main(int argc, const char* argv[]) {
                                 int i = 0;
                                 for (auto& comm : syscom_thread_tx){
                                     SysComMessage syscom_msg{(*syscom_message_counter_ptr)++, i++, SysComMessage::Event::INTERRUPT, true, "interrupt"};
-                                    //comm->push(syscom_msg);
+                                    comm->push(syscom_msg);
                                 }
 
                             }else{
