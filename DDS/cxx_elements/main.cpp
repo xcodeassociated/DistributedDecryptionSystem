@@ -31,7 +31,6 @@
 #include <cryptopp/modes.h>
 #include <cryptopp/aes.h>
 #include <cryptopp/filters.h>
-#include <sys/proc_info.h>
 
 #endif
     
@@ -457,11 +456,13 @@ int main(int argc, const char* argv[]) {
         auto used_threads = 2; // MPI_thread, Process_thread
 
         boost::atomic_uint32_t mpi_message_id{0};
+        boost::container::vector<int> ready_node;
 
         boost::container::map<rank_type, boost::container::map<int, uint64_t>> nodemap; // node - workers (progress)
         boost::container::map<rank_type, boost::container::vector<std::pair<uint64_t, uint64_t>>> nodeinfo;
+
+        boost::shared_mutex watchdog_mutex;
         boost::container::map<uint32_t, std::pair<rank_type, int>> watchdog_need_callback{}; // <message_id, <node, kick_number>>
-        boost::container::vector<int> ready_node;
 
         uint64_t match_found = 0;
 
@@ -474,45 +475,42 @@ int main(int argc, const char* argv[]) {
             uint64_t received = 0l;
             while (isAlive){
 
-                boost::function<void(void)> watchdog_implementation{[&](void) -> void {
-//                    std::cout << "[debug: " << world.rank() << "] Watchod triggered!" << std::endl;
-//                    std::cout << "[debug: " << world.rank() << "] Watchod goes a sleep..." << std::endl;
-                }};
-
-                CallBackTimer watchdog;
-                watchdog.start(boost::chrono::milliseconds(5000), watchdog_implementation);
-
                 boost::function<void(void)> pinger_implementation{[&](void) -> void {
-                    // TODO: similar code used in init... don't copy code!!!
-                    for (int i = 1; i < world.size(); i++) {
-                        if (std::find(ready_node.begin(), ready_node.end(), i) != ready_node.end()) {
-                            auto it = std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(),
-                                                   [&](const auto &e) {
-                                                       return (e.second).first == i;
-                                                   });
-                            if (it == watchdog_need_callback.end()) {
-                                auto msg_id = mpi_message_id++;
-                                send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::PING, true, "?"});
+                    boost::unique_lock<boost::shared_mutex> lock(watchdog_mutex);
 
-                                // TODO: watchdog register mechanizm
-                                if (watchdog_need_callback.size() > 0) {
-                                    if (watchdog_need_callback.find(msg_id) == watchdog_need_callback.end())
+                    if (isAlive) {
+                        // TODO: similar code used in init... don't copy code!!!
+                        for (int i = 1; i < world.size(); i++) {
+                            if (std::find(ready_node.begin(), ready_node.end(), i) != ready_node.end()) {
+                                auto it = std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(),
+                                                       [&](const auto &e) {
+                                                           return (e.second).first == i;
+                                                       });
+                                if (it == watchdog_need_callback.end()) {
+                                    auto msg_id = mpi_message_id++;
+                                    send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::PING, true, "?"});
+
+                                    // TODO: watchdog register mechanizm
+                                    if (watchdog_need_callback.size() > 0) {
+                                        if (watchdog_need_callback.find(msg_id) == watchdog_need_callback.end())
+                                            watchdog_need_callback[msg_id] = std::make_pair(i, 0);
+                                        else
+                                            throw std::runtime_error{"Message already registered in Watchdog!"};
+                                    } else
                                         watchdog_need_callback[msg_id] = std::make_pair(i, 0);
-                                    else
-                                        throw std::runtime_error{"Message already registered in Watchdog!"};
-                                } else
-                                    watchdog_need_callback[msg_id] = std::make_pair(i, 0);
-                            } else {
-                                std::cout << "[debug: " << world.rank() << "] kick!!" << std::endl;
-                                for (auto t : watchdog_need_callback) {
-                                    std::cout << "{" << t.first << ", " << t.second.first << ", " << t.second.second << "}\n";
+                                } else {
+                                    std::cout << "[debug: " << world.rank() << "] kick!!" << std::endl;
+                                    for (auto t : watchdog_need_callback) {
+                                        std::cout << "K {" << t.first << ", " << t.second.first << ", "
+                                                  << t.second.second << "} K\n";
+                                    }
                                 }
                             }
                         }
                     }
                 }};
                 CallBackTimer pinger;
-                pinger.start(boost::chrono::milliseconds(2000), pinger_implementation);
+                pinger.start(boost::chrono::milliseconds(3000), pinger_implementation);
 
 
                 auto message_processing = [&] {
@@ -529,6 +527,7 @@ int main(int argc, const char* argv[]) {
 
                         switch (msg.event){
                             case MpiMessage::Event::CALLBACK:{
+                                boost::unique_lock<boost::shared_mutex> lock(watchdog_mutex);
 
                                 MpiMessage::Callback callback_msg_id;
                                 if (msg.respond_to)
@@ -539,7 +538,6 @@ int main(int argc, const char* argv[]) {
                                 std::cout << "[debug: " << world.rank() << "]: Received CALLBACK message with id: " << msg.id << " for {msg_id: " << callback_msg_id.message_id << ", event: " << std::to_string(
                                         static_cast<int>(callback_msg_id.event)) << "} form rank: " << msg.sender << std::endl;
 
-                                // TODO: unregister message form watchdog
                                 auto watchdog_element_iterator = watchdog_need_callback.find(callback_msg_id.message_id);
                                 if (watchdog_element_iterator != watchdog_need_callback.end()) {
                                     watchdog_need_callback.erase(watchdog_element_iterator);
@@ -547,7 +545,7 @@ int main(int argc, const char* argv[]) {
                                             static_cast<int>(callback_msg_id.event)) << "}" << std::endl;
                                 }else{
                                     std::cout << "[error: " << world.rank() << "]: Watchdog could not find message: " << callback_msg_id.message_id << std::endl;
-                                    // TODO: what next?
+                                    // TODO: maybe because of slave is already offline...
                                 }
 
                                 // TODO: Process callback...
@@ -654,16 +652,19 @@ int main(int argc, const char* argv[]) {
                             }break;
 
                             case MpiMessage::Event::SLAVE_DONE:{
+                                boost::unique_lock<boost::shared_mutex> lock(watchdog_mutex); //, boost::defer_lock);
+
                                 std::cout << "[info: " << world.rank() << "]: Master received SLAVE_DONE from: " << msg.sender << std::endl;
 
                                 // remove all watchdogs
                                 std::cout << "[info: " << world.rank() << "] Master removing all watchdogs events for slave: " << msg.sender << std::endl;
 
-                                for (auto it = watchdog_need_callback.cbegin(); it != watchdog_need_callback.cend(); it++){
-                                    if ((*it).second.first == msg.sender)
+                                for (auto it = watchdog_need_callback.begin(); it != watchdog_need_callback.end(); it++){
+                                    if ((*it).second.first == msg.sender) {
                                         watchdog_need_callback.erase(it);
+                                    }
                                 }
-
+                                std::cout << "?????????????????\n";
                                 assert(std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(), [&msg](const auto& e){
                                     return e.second.first == msg.sender;
                                 }) == watchdog_need_callback.end());
@@ -702,6 +703,8 @@ int main(int argc, const char* argv[]) {
         boost::this_thread::sleep_for(boost::chrono::seconds(2));
         std::cout << "[debug: " << world.rank() << "] " << "----- Init ping pong squence: STARTS -----" << std::endl;
         for (int i = 1; i < world.size(); i++) {
+            boost::unique_lock<boost::shared_mutex> lock(watchdog_mutex);
+
             std::cout << "[debug: " << world.rank() << "] " << "Sending init data to: " << i << std::endl;
 
             std::stringstream report;
