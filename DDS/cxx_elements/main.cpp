@@ -51,7 +51,8 @@ struct MpiMessage{
         FOUND = 3,
         KILL = 4,
         SLAVE_DONE = 5,
-        SLAVE_REARRANGE = 6
+        SLAVE_REARRANGE = 6,
+        SLAVE_WORKER_DONE = 7
     };
 
     struct Callback{
@@ -736,6 +737,15 @@ int main(int argc, const char* argv[]) {
 
                             }break;
 
+                            case MpiMessage::Event::SLAVE_WORKER_DONE:{
+                                boost::container::vector<std::string> range_str;
+                                boost::split(range_str, msg.data, boost::is_any_of(":"));
+                                assert(range_str.size() == 2);
+
+                                uint64_t range_begin = boost::lexical_cast<uint64_t>(range_str[0]);
+                                uint64_t range_end = boost::lexical_cast<uint64_t>(range_str[1]);
+                            }break;
+
                             default:{
                                 // TODO: invalide message!
                             }break;
@@ -993,6 +1003,10 @@ int main(int argc, const char* argv[]) {
                                 still_running++;
                         }
 
+                        std::stringstream ss;
+                        ss << worker_ranges[sys_msg.rank].first << ":" << worker_ranges[sys_msg.rank].second;
+                        send_queue.push({mpi_message_id++, 0, world.rank(), MpiMessage::Event::SLAVE_WORKER_DONE, false, ss.str()});
+
                         if (new_key_ranges.size() > 0){
                             std::cout << "[debug: " << world.rank() << "] SysCom: Assigning a new key range to worker..." << std::endl;
                             // TODO: if the worker has finished it's own job, assigne a new key range to process if there is one...
@@ -1101,6 +1115,10 @@ int main(int argc, const char* argv[]) {
                                     SysComMessage syscom_msg{(*syscom_message_counter_ptr)++, i++, SysComMessage::Event::INTERRUPT, true, "interrupt"};
                                     comm->push(syscom_msg);
                                 }
+
+                            }break;
+
+                            case MpiMessage::Event::SLAVE_REARRANGE:{
 
                             }break;
 
