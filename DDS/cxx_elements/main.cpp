@@ -479,7 +479,6 @@ int main(int argc, const char* argv[]) {
                     boost::unique_lock<boost::shared_mutex> lock(watchdog_mutex);
 
                     if (isAlive) {
-                        // TODO: similar code used in init... don't copy code!!!
                         for (int i = 1; i < world.size(); i++) {
                             if (std::find(ready_node.begin(), ready_node.end(), i) != ready_node.end()) {
                                 auto it = std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(),
@@ -490,7 +489,6 @@ int main(int argc, const char* argv[]) {
                                     auto msg_id = mpi_message_id++;
                                     send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::PING, true, "?"});
 
-                                    // TODO: watchdog register mechanizm
                                     if (watchdog_need_callback.size() > 0) {
                                         if (watchdog_need_callback.find(msg_id) == watchdog_need_callback.end())
                                             watchdog_need_callback[msg_id] = std::make_pair(i, 0);
@@ -499,16 +497,24 @@ int main(int argc, const char* argv[]) {
                                     } else
                                         watchdog_need_callback[msg_id] = std::make_pair(i, 0);
                                 } else {
-                                    std::cout << "[debug: " << world.rank() << "] kick!!" << std::endl;
-                                    for (auto t : watchdog_need_callback) {
-                                        std::cout << "K {" << t.first << ", " << t.second.first << ", "
-                                                  << t.second.second << "} K\n";
+                                    for (auto& t : watchdog_need_callback) {
+                                        if ((t.second.second) == 1)
+                                            std::cout << "<<Watchdog: Still waiting for message: \t{" << t.first << ", " << t.second.first << ", " << (t.second.second)++ << "}" << std::endl;
+                                        else if ((t.second.second) > 2){
+                                            std::cout << "[debug: " << world.rank() << "] <<Wachdog: Slave: " << t.second.first  << " needs to be handled!" << std::endl;
+                                            std::cout << "<<Message lost: \t{" << t.first << ", " << t.second.first << ", " << (t.second.second)++ << "}" << std::endl;
+                                            //TODO: handle slave went off (slave has to be marked as not ready)
+                                        }
                                     }
                                 }
+                            } else {
+                                std::cout << "[debug: " << world.rank() << "] <<Watchdog: Skipping ping for: " << i << " - not ready!" << std::endl;
+                                //TODO: Remove all messages for this slave...
                             }
                         }
                     }
                 }};
+
                 CallBackTimer pinger;
                 pinger.start(boost::chrono::milliseconds(3000), pinger_implementation);
 
@@ -655,19 +661,6 @@ int main(int argc, const char* argv[]) {
                                 boost::unique_lock<boost::shared_mutex> lock(watchdog_mutex); //, boost::defer_lock);
 
                                 std::cout << "[info: " << world.rank() << "]: Master received SLAVE_DONE from: " << msg.sender << std::endl;
-
-                                // remove all watchdogs
-                                std::cout << "[info: " << world.rank() << "] Master removing all watchdogs events for slave: " << msg.sender << std::endl;
-
-                                for (auto it = watchdog_need_callback.begin(); it != watchdog_need_callback.end(); it++){
-                                    if ((*it).second.first == msg.sender) {
-                                        watchdog_need_callback.erase(it);
-                                    }
-                                }
-                                std::cout << "?????????????????\n";
-                                assert(std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(), [&msg](const auto& e){
-                                    return e.second.first == msg.sender;
-                                }) == watchdog_need_callback.end());
 
                                 std::cout << "[info: " << world.rank() << "] Master setting slave: " << msg.sender << " offline"<< std::endl;
 
