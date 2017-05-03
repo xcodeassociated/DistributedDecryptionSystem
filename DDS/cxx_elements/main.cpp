@@ -42,9 +42,7 @@ using data_type = std::string;
 using rank_type = int;
 using message_id_type = uint32_t;
 
-struct PingWorkerReport{
-
-};
+uint64_t test_match = 0;
 
 struct MpiMessage{
     enum class Event : int {
@@ -305,9 +303,19 @@ public:
 
                     SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::WORKER_DONE, false, "done"};
                     this->syscom_tx_ptr->push(syscom_msg);
-                }else {
-                    // ...
-                    this->current_key++;
+                } else {
+
+                    // test key match
+                    if ((this->current_key == ::test_match) && (::test_match != 0)) {
+                        SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::KEY_FOUND, false, std::to_string(this->current_key)};
+                        this->syscom_tx_ptr->push(syscom_msg);
+
+                        // TODO: work around...
+                        this->current_key++;
+                    } else {
+                        // keep working...
+                        this->current_key++;
+                    }
                 }
             }
 
@@ -394,7 +402,8 @@ int main(int argc, const char* argv[]) {
     desc.add_options()
             ("help", "produce help MpiMessage")
             ("from", po::value<uint64_t>(), "set key range BEGIN value")
-            ("to", po::value<uint64_t>(), "set key range END value");
+            ("to", po::value<uint64_t>(), "set key range END value")
+            ("test_match", po::value<uint64_t>(), "set test match key");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -417,6 +426,10 @@ int main(int argc, const char* argv[]) {
     else {
         std::cerr << "Set max range!" << std::endl;
         return 1;
+    }
+
+    if (vm.count("test_match")) {
+        ::test_match = vm["test_match"].as<uint64_t>();
     }
 
     assert(options.absolute_key_from >= 0 && options.absolute_key_to > 0);
@@ -449,6 +462,8 @@ int main(int argc, const char* argv[]) {
         boost::container::map<rank_type, boost::container::vector<std::pair<uint64_t, uint64_t>>> nodeinfo;
         boost::container::map<uint32_t, std::pair<rank_type, int>> watchdog_need_callback{}; // <message_id, <node, kick_number>>
         boost::container::vector<int> ready_node;
+
+        uint64_t match_found = 0;
 
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
         std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread rank: " << boost::this_thread::get_id() << std::endl;
@@ -617,7 +632,6 @@ int main(int argc, const char* argv[]) {
 
                                         assert(pingmap.size() == nodemap[msg.sender].size());
 
-
                                     }break;
                                     default:{
                                         // invalide message...
@@ -625,9 +639,20 @@ int main(int argc, const char* argv[]) {
                                 }
 
                             }break;
+
                             case MpiMessage::Event::FOUND:{
 
+                                uint64_t match = boost::lexical_cast<uint64_t>(msg.data);
+                                match_found = match;
+
+                                std::cout << "[info: " << world.rank() << "] ~~~ Master received KEY FOUND form Slave: " << msg.sender << ", key: " <<  match_found << " ~~~" << std::endl;
+                                std::cout << "[info: " << world.rank() << "] Master sends KILL message to all slaves" << std::endl;
+
+                                for (int slave : ready_node)
+                                    send_queue.push({mpi_message_id++, slave, world.rank(), MpiMessage::Event::KILL, false, "kill"});
+
                             }break;
+
                             case MpiMessage::Event::SLAVE_DONE:{
                                 std::cout << "[info: " << world.rank() << "]: Master received SLAVE_DONE from: " << msg.sender << std::endl;
 
@@ -794,7 +819,6 @@ int main(int argc, const char* argv[]) {
 
             auto process_syscom_message = [&](SysComMessage& sys_msg) {
                 switch (sys_msg.event) {
-                    // TODO: When ping is trigger by modulo - send message to master node or store last key for faster access? Something to concider...
                     case SysComMessage::Event::PING: {
                         std::cout << "[debug: " << world.rank() << "] SysCom: PING EVENT: "
                                   << "{rank:" << sys_msg.rank << ", data: " << sys_msg.data << "}"
@@ -936,6 +960,16 @@ int main(int argc, const char* argv[]) {
                         }
                     }break;
 
+                    case SysComMessage::Event::KEY_FOUND: {
+
+                        uint64_t match = boost::lexical_cast<uint64_t>(sys_msg.data);
+
+                        std::cout << "[error: " << world.rank() << "] ~~~ Worker: " << sys_msg.rank << ", KEY FOUND: " << match << " ~~~" << std::endl;
+
+                        send_queue.push({mpi_message_id++, 0, world.rank(), MpiMessage::Event::FOUND, false, sys_msg.data});
+
+                    }break;
+
                     default: {
                         std::cout << "[error: " << world.rank() << "] Unknow SYSCOM message!" << std::endl;
                     }break;
@@ -970,12 +1004,12 @@ int main(int argc, const char* argv[]) {
 
                                 ping_msg = msg;
 
-                            }
-                                break;
+                            }break;
+
                             case MpiMessage::Event::INIT: {
                                 if (!isInit) {
                                     std::cout << "[debug: " << world.rank() << "]: Init message processing..." << std::endl;
-
+                                    isInit = true;
                                     boost::container::vector<std::string> range_str;
                                     boost::split(range_str, msg.data, boost::is_any_of(":"));
                                     assert(range_str.size() == 2);
@@ -1002,22 +1036,19 @@ int main(int argc, const char* argv[]) {
                                 } else {
                                     // TODO: send invalide operation...
                                 }
-                            }
-                                break;
+                            }break;
+
                             case MpiMessage::Event::KILL: {
-                                if (isAlive) {
-                                    isAlive = false;
-                                    std::stringstream ss;
-                                    ss << "KILL << SENDING BACK FROM: " << world.rank() << " >>" << std::endl;
-                                    data_type data{ss.str()};
-                                    send_queue.push(
-                                            {mpi_message_id++, msg.sender, world.rank(), MpiMessage::Event::CALLBACK,
-                                             false, data, MpiMessage::Callback{msg.id, msg.event}});
-                                } else {
-                                    // TODO: send invalide operation...
+                                std::cout << "[debug: " << world.rank() << "]: Slave: " << world.size() << " received MPI KILL message - stopping slave" << std::endl;
+
+                                int i = 0;
+                                for (auto& comm : syscom_thread_tx){
+                                    SysComMessage syscom_msg{(*syscom_message_counter_ptr)++, i++, SysComMessage::Event::INTERRUPT, true, "interrupt"};
+                                    comm->push(syscom_msg);
                                 }
-                            }
-                                break;
+
+                            }break;
+
                             default: {
                                 // TODO: send invalide operation...
                             }
