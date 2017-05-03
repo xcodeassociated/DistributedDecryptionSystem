@@ -497,19 +497,78 @@ int main(int argc, const char* argv[]) {
                                     } else
                                         watchdog_need_callback[msg_id] = std::make_pair(i, 0);
                                 } else {
+
+                                    boost::container::vector<rank_type> lost_slaves;
+
                                     for (auto& t : watchdog_need_callback) {
                                         if ((t.second.second) == 1)
                                             std::cout << "<<Watchdog: Still waiting for message: \t{" << t.first << ", " << t.second.first << ", " << (t.second.second)++ << "}" << std::endl;
                                         else if ((t.second.second) > 2){
-                                            std::cout << "[debug: " << world.rank() << "] <<Wachdog: Slave: " << t.second.first  << " needs to be handled!" << std::endl;
-                                            std::cout << "<<Message lost: \t{" << t.first << ", " << t.second.first << ", " << (t.second.second)++ << "}" << std::endl;
-                                            //TODO: handle slave went off (slave has to be marked as not ready)
+                                            std::cout << "[debug: " << world.rank() << "] <<Wachdog: Slave: " << t.second.first  << " is dead, needs to be handled!" << std::endl;
+                                            lost_slaves.push_back(t.second.first);
                                         }
+                                    }
+
+                                    if (lost_slaves.size() > 0) {
+                                        std::cout << "[debug: " << world.rank() << "] <<Wachdog: Handeling - there are: " << lost_slaves.size() << " slaves dead" << std::endl;
+                                        for (auto i : lost_slaves) {
+
+                                            // TODO: abstract - code replication!
+                                            // find first registered message for this slave
+                                            auto wd_it = std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(),
+                                                                      [i](const std::pair<uint32_t, std::pair<rank_type, int>>& element){
+                                                                          return element.second.first == i;
+                                                                      }
+                                            );
+
+                                            while (wd_it != watchdog_need_callback.end()){
+                                                watchdog_need_callback.erase(wd_it);
+
+                                                // find next registered message for slave
+                                                wd_it = std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(),
+                                                             [i](const std::pair<uint32_t, std::pair<rank_type, int>>& element){
+                                                                 return element.second.first == i;
+                                                             }
+                                                );
+                                            }
+                                        }
+
+                                        auto it = std::find(ready_node.begin(), ready_node.end(), i);
+                                        assert(it != ready_node.end());
+
+                                        ready_node.erase(std::remove(ready_node.begin(), ready_node.end(), i));
+                                        assert(std::find(ready_node.begin(), ready_node.end(), i) == ready_node.end());
+                                        ready_node.shrink_to_fit();
+
+                                        std::cout << "[debug: " << world.rank() << "] <<Wachdog: Dead Slave: " << i << " handeled." << std::endl;
                                     }
                                 }
                             } else {
-                                std::cout << "[debug: " << world.rank() << "] <<Watchdog: Skipping ping for: " << i << " - not ready!" << std::endl;
-                                //TODO: Remove all messages for this slave...
+                                std::cout << "[debug: " << world.rank() << "] <<Watchdog: Skipping ping for: " << i << " - (not ready || dead)" << std::endl;
+
+                                // check if there are any registered messages for this slave - this can happen if the slave has done.
+
+                                // TODO: abstract - code replication!
+                                auto wd_it = std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(),
+                                                          [i](const std::pair<uint32_t, std::pair<rank_type, int>>& element){
+                                                              return element.second.first == i;
+                                                          }
+                                );
+
+                                if (wd_it != watchdog_need_callback.end()) {
+                                    std::cout << "[debug: " << world.rank() << "] <<Watchdog: Oh! there are some registered messages for not ready slave.." << std::endl;
+                                    while (wd_it != watchdog_need_callback.end()) {
+                                        watchdog_need_callback.erase(wd_it);
+
+                                        wd_it = std::find_if(watchdog_need_callback.begin(),
+                                                             watchdog_need_callback.end(),
+                                                             [i](const std::pair<uint32_t, std::pair<rank_type, int>> &element) {
+                                                                 return element.second.first == i;
+                                                             }
+                                        );
+                                    }
+                                }
+
                             }
                         }
                     }
