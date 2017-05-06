@@ -1238,7 +1238,13 @@ int main(int argc, const char* argv[]) {
                 
                 MpiMessage received_message;
                 world.recv((*stat).source(), (*stat).tag(), received_message);
+
+                if (messages_received.size() > 100) {
+                    messages_received.clear();
+                    messages_received.shrink_to_fit();
+                }
                 messages_received.push_back(received_message); // store message
+
                 receive_queue.push(boost::move(received_message));
                 
                 std::cout << "[debug: " << world.rank() << "] Receive thread has received MpiMessage\n    data:" << received_message.data << std::endl;
@@ -1248,7 +1254,13 @@ int main(int argc, const char* argv[]) {
                 MpiMessage msg;
                 while (send_queue.pop(msg)){
                     std::cout << "[debug: " << world.rank() << "] " << "Message {target: " << msg.receiver << ", data: " << msg.data << "} is about to send" << std::endl;
+
+                    if (messages_sent.size() > 100){
+                        messages_sent.clear();
+                        messages_sent.shrink_to_fit();
+                    }
                     messages_sent.push_back(msg); // store message
+
                     world.send(msg.receiver, 0, msg);
                     std::cout << "[debug: " << world.rank() << "] " << "Message sent." << std::endl;
                 }
