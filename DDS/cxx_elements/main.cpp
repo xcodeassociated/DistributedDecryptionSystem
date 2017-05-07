@@ -447,10 +447,11 @@ int main(int argc, const char* argv[]) {
         boost::atomic_uint32_t mpi_message_id{0};
         boost::container::vector<int> ready_node; // this keeps info about which slave is up
 
-        boost::container::map<int, int> slave_map;                                  // slave -> number of workers
-        boost::container::map<int, boost::container::vector<int>> slave_workers;    // slave -> it's workers (absolute worker number)
-        boost::container::map<int, int> work_map;                                   // worker -> current index
-        boost::container::map<int, boost::tuple<uint64_t, uint64_t, bool>> range_map; // current index -> {range, done?}
+        boost::container::map<int, int> slave_map;                                      // slave -> number of workers
+        boost::container::map<int, boost::container::vector<int>> slave_workers;        // slave -> it's workers (absolute worker number)
+        boost::container::map<int, int> work_map;                                       // worker (absolute worker number) -> current index (of range in map)
+        boost::container::map<int, boost::tuple<uint64_t, uint64_t, bool>> range_map;   // current index (of range in map) -> {{range}, done?}
+        boost::container::map<int, std::pair<int, uint64_t>> worker_progress;           // worker (absolute worker number) -> {current index (of range in map, key}
 
 //        boost::container::map<rank_type, boost::container::map<int, uint64_t>> nodemap; // node - workers (progress)
 //        boost::container::map<rank_type, boost::container::vector<std::pair<uint64_t, uint64_t>>> nodeinfo;
@@ -575,9 +576,8 @@ int main(int argc, const char* argv[]) {
                     }
                 }};
 
-                // TODO: start ping watchdog when init watchdog is finished
+                // TODO: add feature to timer class for deciding if lambada function is performed at start or at second tick of timer! This would be nice for pinger to skip first tick
                 CallBackTimer pinger;
-                //pinger.start(boost::chrono::milliseconds(3000), pinger_implementation);
 
                 auto message_processing = [&] {
                     MpiMessage msg;
@@ -629,7 +629,7 @@ int main(int argc, const char* argv[]) {
                                         boost::container::vector<std::string> report_strings;
                                         boost::split(report_strings, msg.data, ::isspace);
 
-                                        boost::container::map<std::string, std::string> report_mapped; //worker -> current_key
+                                        boost::container::map<std::string, std::string> report_mapped; //worker -> done_key
 
                                         for (const std::string& s : report_strings) {
                                             std::string::size_type key_pos = 0;
@@ -650,23 +650,46 @@ int main(int argc, const char* argv[]) {
                                             }
                                         }
 
-                                        assert(report_mapped.size() == slave_workers[msg.sender].size());
+                                        assert(report_mapped.size() == slave_workers[msg.sender -1].size()); // sender rank 0 is master so we need to -1 to get slaves from 0
 
-                                        boost::container::map<int, uint64_t>& pingmap = nodemap[msg.sender];
+                                        for (const std::pair<std::string, std::string>& element : report_mapped) {
+                                            int worker_number_relative = boost::lexical_cast<int>(element.first); // 0 or 1 or 2 ...
+                                            uint64_t worker_key_done = boost::lexical_cast<uint64_t>(element.second);
 
-                                        for (const auto& e : report_mapped){
-                                            int index = boost::lexical_cast<int>(e.first);
-                                            uint64_t value = boost::lexical_cast<uint64_t>(e.second);
+                                            // first get absolute worker number
+                                            // TODO: waist! we don't need to loop over slave_workers since ping is only from one slave
+                                            int worker_number_absolute = 0;
+                                            for (const std::pair<int, boost::container::vector<int>>& e : slave_workers) {
+                                                if (e.first == msg.sender -1){
+                                                    int j = 0;
+                                                    for (const auto& ee : e.second) {
+                                                        if (j != worker_number_relative)
+                                                            worker_number_absolute++;
+                                                        else
+                                                            break;
 
-                                            if (pingmap.find(index) == pingmap.end())
-                                                throw std::runtime_error{"No worker thread in pingmap!"};
+                                                        j++;
+                                                    }
+                                                    break;
+                                                }else
+                                                    for (const auto& ee : e.second)
+                                                        worker_number_absolute++;
+                                            }
 
-                                            std::cout << "[info: " << world.rank() << "]: Storing report fot: {node:" << msg.sender << ", worker: " << std::to_string(index) << ", value: " << value << "}" << std::endl;
+                                            // here is where we should get a valid absolute worker number
+                                            // check if the key is valid for current range - otherwise ping was sent just before worker done
+                                            int current_index_range = work_map[worker_number_absolute];
+                                            const boost::tuple<uint64_t, uint64_t, bool>& valid_range = range_map[current_index_range];
+                                            if (worker_key_done >= boost::get<0>(valid_range) && worker_key_done <= boost::get<1>(valid_range)){
+                                                // valid key for worker range
+                                                worker_progress[worker_number_absolute] = std::make_pair(current_index_range, worker_key_done);
+                                                std::cout << "[debug: " << world.rank() << "] Master registered progress for Worker: " <<  worker_number_absolute << " - " << worker_key_done << std::endl;
+                                            }else{
+                                                // key is not valid for a worker range
+                                                std::cout << "[debug: " << world.rank() << "] 0x0010" << std::endl;
+                                            }
 
-                                            pingmap[index] = value;
                                         }
-
-                                        assert(pingmap.size() == nodemap[msg.sender].size());
 
                                     }break;
 
@@ -721,6 +744,9 @@ int main(int argc, const char* argv[]) {
 
                                                 std::cout << "[debug: " << world.rank() << "] " << "Watchdog registered message with id: " << msg_id << " for rank: " << i << std::endl;
                                             }
+
+                                            // turn on watchdog
+                                            pinger.start(boost::chrono::milliseconds(3000), pinger_implementation);
                                         }
                                     }break;
 
