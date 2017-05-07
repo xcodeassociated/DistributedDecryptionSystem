@@ -53,7 +53,8 @@ struct MpiMessage{
         KILL = 5,
         SLAVE_DONE = 6,
         SLAVE_REARRANGE = 7,
-        SLAVE_WORKER_DONE = 8
+        SLAVE_WORKER_DONE = 8,
+        SLAVE_WORKER_RESPIN = 9
     };
 
     struct Callback{
@@ -444,10 +445,11 @@ int main(int argc, const char* argv[]) {
         auto used_threads = 2; // MPI_thread, Process_thread
 
         boost::atomic_uint32_t mpi_message_id{0};
-        boost::container::vector<int> ready_node;
+        boost::container::vector<int> ready_node; // this keeps info about which slave is up
 
-        boost::container::map<int, int> slave_map;                          // slave -> worker
-        boost::container::map<int, int> work_map;                           // worker -> current index
+        boost::container::map<int, int> slave_map;                                  // slave -> number of workers
+        boost::container::map<int, boost::container::vector<int>> slave_workers;    // slave -> it's workers
+        boost::container::map<int, int> work_map;                                   // worker -> current index
         boost::container::map<int, boost::tuple<uint64_t, uint64_t, bool>> range_map; // current index -> {range, done?}
 
 //        boost::container::map<rank_type, boost::container::map<int, uint64_t>> nodemap; // node - workers (progress)
@@ -461,6 +463,9 @@ int main(int argc, const char* argv[]) {
         boost::container::map<uint32_t, std::pair<rank_type, int>> watchdog_need_callback; // <message_id, <node, kick_number>>
 
         uint64_t match_found = 0;
+
+        // TODO: remove temporary variable
+        int absolut_worker_number = 0; // masakra :(
 
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
         std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread rank: " << boost::this_thread::get_id() << std::endl;
@@ -570,9 +575,9 @@ int main(int argc, const char* argv[]) {
                     }
                 }};
 
+                // TODO: start ping watchdog when init watchdog is finished
                 CallBackTimer pinger;
-                pinger.start(boost::chrono::milliseconds(3000), pinger_implementation);
-
+                //pinger.start(boost::chrono::milliseconds(3000), pinger_implementation);
 
                 auto message_processing = [&] {
                     MpiMessage msg;
@@ -613,46 +618,19 @@ int main(int argc, const char* argv[]) {
                                 switch (callback_msg_id.event){
                                     case MpiMessage::Event::INIT:{
                                         std::cout << "[info: " << world.rank() << "]: - - - - FINISHED INIT FOR node: " << msg.sender << std::endl;
-
-                                        if (nodemap.find(msg.sender) != nodemap.end())
-                                            throw std::runtime_error{"Error mapping node with workers..."};
-
-                                        int workers = std::atoi(msg.data.c_str());
-
-                                        std::cout << "[debug: " << world.rank() << "]: Setting number of workers for node: " << msg.sender << " on: " << std::to_string(workers) << std::endl;
-                                        std::cout << "[debug: " << world.rank() << "]: Calculating Workers ranges in Master for: " << ranges[msg.sender - 1].first << " - " << ranges[msg.sender - 1].second  << std::endl;
-
-                                        boost::container::vector<std::pair<uint64_t, uint64_t>> worker_ranges =
-                                                boost::move(calculate_range(ranges[msg.sender - 1].first, ranges[msg.sender - 1].second, workers));
-
-                                        for (const auto& range : worker_ranges)
-                                            std::cout << "[debug: " << world.rank() << "] \t[" << range.first << ", " << range.second << "]" << std::endl;
-
-                                        nodeinfo[msg.sender] = boost::move(worker_ranges);
-
-                                        boost::container::map<int, uint64_t> temp{};
-                                        for (int i = 0; i < workers; i++){
-                                            temp[i] = 0;
-                                        }
-
-                                        assert(static_cast<int>(temp.size()) == workers);
-
-                                        nodemap[msg.sender] = boost::move(temp);
                                         ready_node.push_back(msg.sender);
-
                                     }break;
 
                                     case MpiMessage::Event::PING:{
                                         std::cout << "[info: " << world.rank() << "]: - - - - PING FROM node: " << msg.sender << std::endl;
 
-                                        boost::container::vector<std::string> report_strings{};
+                                        boost::container::vector<std::string> report_strings;
                                         boost::split(report_strings, msg.data, ::isspace);
 
                                         assert(report_strings.size() == nodemap[msg.sender].size());
 
-                                        boost::container::map<std::string, std::string> report_mapped{};
+                                        boost::container::map<std::string, std::string> report_mapped;
 
-                                        ///////////////
                                         for (const std::string& s : report_strings) {
                                             std::string::size_type key_pos = 0;
                                             std::string::size_type key_end;
@@ -671,7 +649,6 @@ int main(int argc, const char* argv[]) {
                                                     ++key_pos;
                                             }
                                         }
-                                        ///////////////
 
                                         assert(report_mapped.size() == nodemap[msg.sender].size());
 
@@ -692,6 +669,61 @@ int main(int argc, const char* argv[]) {
                                         assert(pingmap.size() == nodemap[msg.sender].size());
 
                                     }break;
+
+                                    case MpiMessage::Event::INFO: {
+                                        int workers = boost::lexical_cast<int>(msg.data);
+                                        std::cout << "[info: " << world.rank() << "]: Received INFO form: " << msg.sender << " - Workers: " << workers << std::endl;
+                                        slave_map[msg.sender] = workers;
+
+                                        // we got info from every slave
+                                        // TODO: in future handle slave dead before initialization - new "init watchdog" required...
+                                        if (slave_map.size() == world.size() - 1){
+                                            //prepare key ranges for every slave and worker in a slave
+                                            for (int i = 1; i <= world.size(); i++) {
+                                                uint64_t slave_range_begin = ranges[i - 1].first;
+                                                uint64_t slave_range_end = ranges[i - 1].second;
+
+                                                // ranges for a workers in slave
+                                                boost::container::vector<std::pair<uint64_t, uint64_t>> slave_workers_ranges =
+                                                        boost::move(calculate_range(slave_range_begin, slave_range_end, slave_map[i - 1]));
+
+                                                std::stringstream ranges_ss;
+                                                for (const std::pair<uint64_t, uint64_t>& worker_range : slave_workers_ranges){
+                                                    ranges_ss << worker_range.first << ":" << worker_range.second << ' ';
+                                                    // TODO: this is verry simple mapping - since slave is sending ranges to worker one after another this should...
+                                                    slave_workers[i].push_back(absolut_worker_number);
+                                                    work_map[absolut_worker_number] = absolut_worker_number;
+                                                    range_map[absolut_worker_number] = boost::make_tuple(worker_range.first, worker_range.second, false);
+
+                                                    absolut_worker_number++;
+                                                }
+
+                                                std::string data = ranges_ss.str();
+                                                // remove last sapace character from message data string
+                                                assert(std::isspace(data.back()));
+                                                data.erase(data.begin() + data.length() - 1);
+                                                assert(!std::isspace(data.back()));
+
+                                                std::cout << "[debug: " << world.rank() << "]: INIT data for Slave: " << i << ", {" << data << "}" << std::endl;
+
+                                                // send INIT data to slave
+                                                auto msg_id = mpi_message_id++;
+                                                send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::INIT, true, data});
+
+                                                // TODO: watchdog register mechanizm
+                                                if (watchdog_need_callback.size() > 0){
+                                                    if (watchdog_need_callback.find(msg_id) == watchdog_need_callback.end())
+                                                        watchdog_need_callback[msg_id] = std::make_pair(i, 0);
+                                                    else
+                                                        throw std::runtime_error{"Message already registered in Watchdog!"};
+                                                }else
+                                                    watchdog_need_callback[msg_id] = std::make_pair(i, 0);
+
+                                                std::cout << "[debug: " << world.rank() << "] " << "Watchdog registered message with id: " << msg_id << " for rank: " << i << std::endl;
+                                            }
+                                        }
+                                    }break;
+
                                     default:{
                                         // invalide message...
                                     }break;
@@ -741,6 +773,11 @@ int main(int argc, const char* argv[]) {
                                 uint64_t range_end = boost::lexical_cast<uint64_t>(range_str[1]);
                             }break;
 
+                            case MpiMessage::Event::SLAVE_WORKER_RESPIN:{
+                                // TODO: !!!!
+
+                            }break;
+
                             default:{
                                 // TODO: invalide message!
                             }break;
@@ -757,19 +794,16 @@ int main(int argc, const char* argv[]) {
         
         boost::thread process_thread(process_thread_implementation);
 
+        // Sending INFO message to slaves
         boost::this_thread::sleep_for(boost::chrono::seconds(2));
         std::cout << "[debug: " << world.rank() << "] " << "----- Init ping pong squence: STARTS -----" << std::endl;
         for (int i = 1; i < world.size(); i++) {
             boost::unique_lock<boost::shared_mutex> lock(watchdog_mutex);
 
-            std::cout << "[debug: " << world.rank() << "] " << "Sending init data to: " << i << std::endl;
-
-            std::stringstream report;
-            report << ranges[i - 1].first << ":" << ranges[i - 1].second;
-            std::string report_str = report.str();
+            std::cout << "[debug: " << world.rank() << "] " << "Sending INFO request to Slave: " << i << std::endl;
 
             auto msg_id = mpi_message_id++;
-            send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::INIT, true, report_str});
+            send_queue.push({msg_id, i, world.rank(), MpiMessage::Event::INFO, true, "info?"});
 
             // TODO: watchdog register mechanizm
             if (watchdog_need_callback.size() > 0){
@@ -846,9 +880,6 @@ int main(int argc, const char* argv[]) {
 
             boost::container::map<int, int> worker_map;                                 // worker -> current index
             boost::container::map<int, boost::tuple<uint64_t, uint64_t, bool>> range_map; // current index -> {range, done?}
-
-//            boost::container::vector<std::pair<uint64_t, uint64_t>> worker_ranges{};
-//            boost::container::vector<std::pair<uint64_t, uint64_t>> new_key_ranges{}; // ???
 
             bool isInit = false;
 
@@ -928,6 +959,7 @@ int main(int argc, const char* argv[]) {
                                     std::string report_str = report.str();
                                     assert(std::isspace(report_str.back()));
                                     report_str.erase(report_str.begin() + report_str.length() - 1);
+                                    assert(!std::isspace(report_str.back()));
 
                                     std::cout << "[debug: " << world.rank()
                                               << "] SysCom: Processing CALLBACK event for PING: "
@@ -1037,6 +1069,13 @@ int main(int argc, const char* argv[]) {
 
                             SysComMessage syscom_msg{(*syscom_message_counter_ptr)++, sys_msg.rank, SysComMessage::Event::WORKER_REARRANGE, false, ss.str()};
                             syscom_thread_tx[sys_msg.rank]->push(syscom_msg);
+
+                            // Message structure: {<Worker>:<key_range_begin>:<key_range_end>}
+                            std::stringstream ss_mpi;
+                            ss_mpi << sys_msg.rank << ":" << ss.str();
+                            // notify Master that the new key range is processing by Worker
+                            send_queue.push({mpi_message_id++, 0, world.rank(), MpiMessage::Event::SLAVE_WORKER_RESPIN, false, ss_mpi.str()});
+
                         }else{
                             std::cout << "[debug: " << world.rank() << "] SysCom: Worker: " << sys_msg.rank << " has finished and there is no new key range to process..." << std::endl;
 
@@ -1185,7 +1224,7 @@ int main(int argc, const char* argv[]) {
                                 long last = (--range_map.end())->first; // get last map index
                                 range_map[++last] = boost::make_tuple(range_begin, range_end, false);
 
-                                //check if any of worker has finished and waiting for a new key range
+                                //check if any of worker has finished and waiting for a new key range - is marked as false
                                 auto it = std::find_if(worker_running.begin(), worker_running.end(), [](const std::pair<int, bool>& element){
                                     return !element.second;
                                 });
@@ -1197,13 +1236,20 @@ int main(int argc, const char* argv[]) {
                                     assert(worker_map[worker] != static_cast<int>(last));
                                     worker_map[worker] = static_cast<int>(last);
 
-                                    std::cout << "[debug: " << world.rank() << "] SysCom: Assigning a new key range: {" << range_begin << ", " << range_end << "} to worker: " << sys_msg.rank << std::endl;
+                                    std::cout << "[debug: " << world.rank() << "] SysCom: Assigning a new key range: {" << range_begin << ", " << range_end << "} to worker: " << worker << std::endl;
 
                                     std::stringstream ss;
                                     ss << range_begin << ":" << range_end;
 
+                                    // send new key range to Workers
                                     SysComMessage syscom_msg{(*syscom_message_counter_ptr)++, worker, SysComMessage::Event::WORKER_REARRANGE, false, ss.str()};
                                     syscom_thread_tx[worker]->push(syscom_msg);
+
+                                    // Message structure: {<Worker>:<key_range_begin>:<key_range_end>}
+                                    std::stringstream ss_mpi;
+                                    ss_mpi << worker << ":" << ss.str();
+                                    // notify Master that the new key range is processing by Worker
+                                    send_queue.push({mpi_message_id++, 0, world.rank(), MpiMessage::Event::SLAVE_WORKER_RESPIN, false, ss_mpi.str()});
                                 }
                             }break;
 
