@@ -448,7 +448,7 @@ int main(int argc, const char* argv[]) {
         boost::container::vector<int> ready_node; // this keeps info about which slave is up
 
         boost::container::map<int, int> slave_map;                                  // slave -> number of workers
-        boost::container::map<int, boost::container::vector<int>> slave_workers;    // slave -> it's workers
+        boost::container::map<int, boost::container::vector<int>> slave_workers;    // slave -> it's workers (absolute worker number)
         boost::container::map<int, int> work_map;                                   // worker -> current index
         boost::container::map<int, boost::tuple<uint64_t, uint64_t, bool>> range_map; // current index -> {range, done?}
 
@@ -464,8 +464,8 @@ int main(int argc, const char* argv[]) {
 
         uint64_t match_found = 0;
 
-        // TODO: remove temporary variable
-        int absolut_worker_number = 0; // masakra :(
+        // TODO: remove temporary variable - this is required only for slave initializations!
+        int absolut_worker_number = 0;
 
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
         std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread rank: " << boost::this_thread::get_id() << std::endl;
@@ -622,14 +622,14 @@ int main(int argc, const char* argv[]) {
                                     }break;
 
                                     case MpiMessage::Event::PING:{
+                                        // Message structure: {<Worker>:<key_range_begin>:<key_range_end>}
+
                                         std::cout << "[info: " << world.rank() << "]: - - - - PING FROM node: " << msg.sender << std::endl;
 
                                         boost::container::vector<std::string> report_strings;
                                         boost::split(report_strings, msg.data, ::isspace);
 
-                                        assert(report_strings.size() == nodemap[msg.sender].size());
-
-                                        boost::container::map<std::string, std::string> report_mapped;
+                                        boost::container::map<std::string, std::string> report_mapped; //worker -> current_key
 
                                         for (const std::string& s : report_strings) {
                                             std::string::size_type key_pos = 0;
@@ -650,7 +650,7 @@ int main(int argc, const char* argv[]) {
                                             }
                                         }
 
-                                        assert(report_mapped.size() == nodemap[msg.sender].size());
+                                        assert(report_mapped.size() == slave_workers[msg.sender].size());
 
                                         boost::container::map<int, uint64_t>& pingmap = nodemap[msg.sender];
 
@@ -966,6 +966,7 @@ int main(int argc, const char* argv[]) {
                                               << sys_msg.rank << ", sending data: {" << report_str << "}"
                                               << std::endl;
 
+                                    // Message structure: {<worker_number>:<current_key> <worker_number>:<current_key> (...)}
                                     send_queue.push({mpi_message_id++, ping_msg.sender, world.rank(),
                                                      MpiMessage::Event::CALLBACK,
                                                      false, report_str,
