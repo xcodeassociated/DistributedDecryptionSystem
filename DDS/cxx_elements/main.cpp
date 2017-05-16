@@ -451,7 +451,7 @@ int main(int argc, const char* argv[]) {
         boost::container::map<int, boost::container::vector<int>> slave_workers;        // slave -> it's workers (absolute worker number)
         boost::container::map<int, int> work_map;                                       // worker (absolute worker number) -> current index (of range in map)
         boost::container::map<int, boost::tuple<uint64_t, uint64_t, bool>> range_map;   // current index (of range in map) -> {{range}, done?}
-        boost::container::map<int, std::pair<int, uint64_t>> worker_progress;           // worker (absolute worker number) -> {current index (of range in map, key}
+        boost::container::map<int, std::pair<int, uint64_t>> worker_progress;           // worker (absolute worker number) -> {current index (of range in map), key}
 
 //        boost::container::map<rank_type, boost::container::map<int, uint64_t>> nodemap; // node - workers (progress)
 //        boost::container::map<rank_type, boost::container::vector<std::pair<uint64_t, uint64_t>>> nodeinfo;
@@ -801,12 +801,75 @@ int main(int argc, const char* argv[]) {
                                 uint64_t range_begin = boost::lexical_cast<uint64_t>(range_str[1]);
                                 uint64_t range_end = boost::lexical_cast<uint64_t>(range_str[2]);
 
-                                //find absolute worker number
+                                // find absolute worker number
+                                // TODO: waist! we don't need to loop over slave_workers
+                                int worker_number_absolute = 0;
+                                for (const std::pair<int, boost::container::vector<int>>& e : slave_workers) {
+                                    if (e.first == msg.sender -1){
+                                        int j = 0;
+                                        for (const auto& ee : e.second) {
+                                            if (j != worker_number_relative)
+                                                worker_number_absolute++;
+                                            else
+                                                break;
+
+                                            j++;
+                                        }
+                                        break;
+                                    }else
+                                        for (const auto& ee : e.second)
+                                            worker_number_absolute++;
+                                }
+
+                                int current_index_range = work_map[worker_number_absolute];
+
+                                boost::tuple<uint64_t, uint64_t, bool> range_info = range_map[current_index_range]; // ref?
+                                assert(boost::get<2>(range_info) == false);
+
+                                // set range as done
+                                range_map[worker_number_absolute] = boost::make_tuple(boost::get<0>(range_info), boost::get<1>(range_info), true);
+
+                                // set end of range as progress
+                                worker_progress[worker_number_absolute] = std::make_pair(current_index_range, range_end);
 
                             }break;
 
                             case MpiMessage::Event::SLAVE_WORKER_RESPIN:{
-                                // TODO: !!!!
+                                // Message structure: {<Worker>:<key_range_begin>:<key_range_end>}
+
+                                boost::container::vector<std::string> range_str;
+                                boost::split(range_str, msg.data, boost::is_any_of(":"));
+                                assert(range_str.size() == 3);
+
+                                int worker_number_relative = boost::lexical_cast<int>(range_str[0]);
+                                uint64_t range_begin = boost::lexical_cast<uint64_t>(range_str[1]);
+                                uint64_t range_end = boost::lexical_cast<uint64_t>(range_str[2]);
+
+                                // find absolute worker number
+                                // TODO: waist! we don't need to loop over slave_workers
+                                int worker_number_absolute = 0;
+                                for (const std::pair<int, boost::container::vector<int>>& e : slave_workers) {
+                                    if (e.first == msg.sender -1){
+                                        int j = 0;
+                                        for (const auto& ee : e.second) {
+                                            if (j != worker_number_relative)
+                                                worker_number_absolute++;
+                                            else
+                                                break;
+
+                                            j++;
+                                        }
+                                        break;
+                                    }else
+                                        for (const auto& ee : e.second)
+                                            worker_number_absolute++;
+                                }
+
+                                // assert that the worker has finished and is not busy...
+                                int current_index_range = work_map[worker_number_absolute];
+                                assert(boost::get<2>(range_map[current_index_range]) == true);
+
+
 
                             }break;
 
