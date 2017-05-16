@@ -791,12 +791,18 @@ int main(int argc, const char* argv[]) {
                             }break;
 
                             case MpiMessage::Event::SLAVE_WORKER_DONE:{
+                                // Message structure: {<worker_rank>:<begin_range>:<end_range>}
+
                                 boost::container::vector<std::string> range_str;
                                 boost::split(range_str, msg.data, boost::is_any_of(":"));
-                                assert(range_str.size() == 2);
+                                assert(range_str.size() == 3);
 
-                                uint64_t range_begin = boost::lexical_cast<uint64_t>(range_str[0]);
-                                uint64_t range_end = boost::lexical_cast<uint64_t>(range_str[1]);
+                                int worker_number_relative = boost::lexical_cast<int>(range_str[0]);
+                                uint64_t range_begin = boost::lexical_cast<uint64_t>(range_str[1]);
+                                uint64_t range_end = boost::lexical_cast<uint64_t>(range_str[2]);
+
+                                //find absolute worker number
+
                             }break;
 
                             case MpiMessage::Event::SLAVE_WORKER_RESPIN:{
@@ -1056,7 +1062,8 @@ int main(int argc, const char* argv[]) {
 
                         // notify master that the thread has finished
                         std::stringstream ss;
-                        ss << boost::get<0>(range_map[current_range]) << ":" << boost::get<1>(range_map[current_range]);
+                        ss << sys_msg.rank << ":" << boost::get<0>(range_map[current_range]) << ":" << boost::get<1>(range_map[current_range]);
+                        // Message structure: {<worker_rank>:<begin_range>:<end_range>}
                         send_queue.push({mpi_message_id++, 0, world.rank(), MpiMessage::Event::SLAVE_WORKER_DONE, false, ss.str()});
 
                         // check if there is any new key range to process...
