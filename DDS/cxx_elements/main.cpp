@@ -845,6 +845,8 @@ int main(int argc, const char* argv[]) {
                                 uint64_t range_begin = boost::lexical_cast<uint64_t>(range_str[1]);
                                 uint64_t range_end = boost::lexical_cast<uint64_t>(range_str[2]);
 
+                                assert(range_begin < range_end);
+
                                 // find absolute worker number
                                 // TODO: waist! we don't need to loop over slave_workers
                                 int worker_number_absolute = 0;
@@ -869,6 +871,22 @@ int main(int argc, const char* argv[]) {
                                 int current_index_range = work_map[worker_number_absolute];
                                 assert(boost::get<2>(range_map[current_index_range]) == true);
 
+                                // find which range index coresponds to given range
+                                auto it = std::find_if(range_map.begin(), range_map.end(), [range_begin, range_end](const std::pair<int, boost::tuple<uint64_t, uint64_t, bool>>& e) -> bool{
+                                    return boost::get<1>(e.second) == range_end;
+                                });
+
+                                if (it == range_map.end())
+                                    throw std::runtime_error{"0x0020"};
+
+                                if (boost::get<2>(it->second))
+                                    throw std::runtime_error{"0x0021"};
+
+                                // if the range has been found - let's assigne given worker to the range
+                                auto range_id = it->first;
+
+                                assert(work_map[worker_number_absolute] != range_id);
+                                work_map[worker_number_absolute] = range_id;
 
 
                             }break;
