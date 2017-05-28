@@ -92,14 +92,13 @@ int main(int argc, const char* argv[]) {
         uint64_t key_int = vm["key"].as<uint64_t>();
         auto key_bytes = ::uint64ToBytes(key_int);
 
-        byte key[ CryptoPP::AES::DEFAULT_KEYLENGTH ];
         assert(key_bytes.size() == CryptoPP::AES::DEFAULT_KEYLENGTH);
+        byte* key = key_bytes.data();
 
-        std::cout << "Key: ";
+        std::cout << "Hex KEY: ";
         int i = 0;
-        for (const auto& B : key_bytes) {
-            key[i] = B;
-            std::cout << "0x" << std::hex << (0xFF & static_cast<byte>(key[i])) << " ";
+        for (; i < CryptoPP::AES::DEFAULT_KEYLENGTH; ) {
+            std::cout << "0x" << std::hex << (0xFF & static_cast<byte>(key[i++])) << " ";
         }
         std::cout << std::endl;
 
@@ -155,19 +154,18 @@ int main(int argc, const char* argv[]) {
         uint64_t key_int = vm["key"].as<uint64_t>();
         auto key_bytes = ::uint64ToBytes(key_int);
 
-        byte key[CryptoPP::AES::DEFAULT_KEYLENGTH];
         assert(key_bytes.size() == CryptoPP::AES::DEFAULT_KEYLENGTH);
+        byte* key = key_bytes.data();
 
-        std::cout << "Key: ";
+        std::cout << "Hex KEY: ";
         int i = 0;
-        for (const auto& B : key_bytes) {
-            key[i] = B;
-            std::cout << "0x" << std::hex << (0xFF & static_cast<byte>(key[i])) << " ";
+        for (; i < CryptoPP::AES::DEFAULT_KEYLENGTH; ) {
+            std::cout << "0x" << std::hex << (0xFF & static_cast<byte>(key[i++])) << " ";
         }
         std::cout << std::endl;
 
-        byte iv[ CryptoPP::AES::BLOCKSIZE ];
-        memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
+        byte iv[CryptoPP::AES::BLOCKSIZE];
+        memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
 
         std::ifstream file_stream(file_name);
         std::string file_content((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
@@ -182,16 +180,19 @@ int main(int argc, const char* argv[]) {
         std::cout << "sha1: " << sha1 << std::endl;
 
         CryptoPP::AES::Decryption aesDecryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
-        CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption( aesDecryption, iv );
+        CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv);
 
         try {
             std::string decryptedtext;
             CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decryptedtext));
+            std::cout << "1\n";
             stfDecryptor.Put(reinterpret_cast<const unsigned char *>( ciphertext.c_str()), ciphertext.size());
+            std::cout << "2\n";
             stfDecryptor.MessageEnd();
+            std::cout << "3\n";
 
             decryptedtext.erase(std::remove_if(decryptedtext.begin(), decryptedtext.end(),
-                                               [](const char& c){return (c != '\n') ? isalnum(c) == 0 : false; }),
+                                               [](const char &c) { return (c != '\n') ? isalnum(c) == 0 : false; }),
                                 decryptedtext.end());
 
             decryptedtext.shrink_to_fit();
@@ -206,7 +207,7 @@ int main(int argc, const char* argv[]) {
             else
                 std::cout << "checksum DOESN'T match!" << std::endl;
 
-            if (vm.count("output")){
+            if (vm.count("output")) {
                 std::string output = vm["output"].as<std::string>();
                 std::cout << "Saving file: " << output << std::endl;
                 std::ofstream os(output);
@@ -215,9 +216,9 @@ int main(int argc, const char* argv[]) {
                 os.close();
             }
 
-        } catch (const CryptoPP::InvalidCiphertext& e) {
+        } catch (const CryptoPP::InvalidCiphertext &e) {
             std::cout << "CryptoPP::InvalidCiphertext Exception: " << e.what() << std::endl;
-            return 1;
+            //return 1;
         }
 
         return 0;

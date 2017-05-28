@@ -35,7 +35,7 @@
 #include <cryptopp/hex.h>
 #include <cryptopp/files.h>
 #endif
-    
+
 namespace mpi = boost::mpi;
 namespace po = boost::program_options;
 
@@ -204,11 +204,11 @@ public:
         };
         _execute.store(true, boost::memory_order_release);
         _thd = boost::thread([this, interval, func]() {
-                               while (_execute.load(boost::memory_order_acquire)) {
-                                   func();
-                                   boost::this_thread::sleep_for(interval);
-                               }
-                           });
+            while (_execute.load(boost::memory_order_acquire)) {
+                func();
+                boost::this_thread::sleep_for(interval);
+            }
+        });
     }
 
     bool is_running() const noexcept {
@@ -222,7 +222,7 @@ public:
         uint64_t begin;
         uint64_t end;
     };
-    
+
 private:
     int id = 0;
     KeyRange range{0, 0};
@@ -235,9 +235,10 @@ private:
 
     std::string file_path = "";
     std::string decrypted_file_path = "";
+    static boost::mutex mu;
 
 public:
-    
+
     explicit Worker(int _id, KeyRange _range, std::string _file_path, std::string _decrypted_path,
                     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_tx_ref,
                     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_rx_ref,
@@ -260,7 +261,7 @@ public:
         result.push_back((value >> 24) & 0xFF);
         result.push_back((value >> 16) & 0xFF);
         result.push_back((value >>  8) & 0xFF);
-        result.push_back((value) & 0xFF );
+        result.push_back((value) & 0xFF);
         return result;
     }
 
@@ -306,7 +307,7 @@ public:
             }
 
             if (this->work) {
-                if (this->current_key == this->range.end) {
+                if (this->current_key == this->range.end + 1) {
                     this->stop();
 
                     SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::WORKER_DONE, false, "done"};
@@ -316,16 +317,11 @@ public:
 
                     auto key_bytes = this->uint64ToBytes(this->current_key);
 
-                    byte key[CryptoPP::AES::DEFAULT_KEYLENGTH];
                     assert(key_bytes.size() == CryptoPP::AES::DEFAULT_KEYLENGTH);
+                    byte* key = key_bytes.data();
 
-                    int i = 0;
-                    for (const auto& B : key_bytes) {
-                        key[i] = B;
-                    }
-
-                    byte iv[ CryptoPP::AES::BLOCKSIZE ];
-                    memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
+                    byte iv[CryptoPP::AES::BLOCKSIZE];
+                    memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
 
                     std::ifstream file_stream(this->file_path);
                     std::string file_content((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
@@ -337,12 +333,12 @@ public:
                     std::string sha1 = file_lines[1];
 
                     CryptoPP::AES::Decryption aesDecryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
-                    CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption( aesDecryption, iv );
+                    CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv);
 
                     try {
                         std::string decryptedtext;
                         CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decryptedtext));
-                        stfDecryptor.Put(reinterpret_cast<const unsigned char *>( ciphertext.c_str()), ciphertext.size());
+                        stfDecryptor.Put(reinterpret_cast<const unsigned char *>(ciphertext.c_str()), ciphertext.size());
                         stfDecryptor.MessageEnd();
 
                         decryptedtext.erase(std::remove_if(decryptedtext.begin(), decryptedtext.end(),
@@ -354,6 +350,8 @@ public:
                         std::string decrypted_sha = this->hashString(decryptedtext);
 
                         if (decrypted_sha == sha1) {
+                            std::cout << "[debug, Worker: " << this->id << "]: FOOUND for key: " << this->current_key << std::endl;
+
                             SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::KEY_FOUND, false, std::to_string(this->current_key)};
                             this->syscom_tx_ptr->push(syscom_msg);
                             this->stop();
@@ -362,12 +360,19 @@ public:
                             os << decryptedtext;
                             os.flush();
                             os.close();
+                        }else{
+                            boost::unique_lock<boost::mutex> lock(Worker::mu);
+                            std::cout << "[debug, Worker: " << this->id << "]: non except -> key: " << this->current_key << ", decrypted sha: " << decrypted_sha << " sha: " << sha1 << std::endl;
                         }
 
                     } catch (const CryptoPP::InvalidCiphertext& e) {
                         // ...
-                        this->current_key++;
+                        boost::unique_lock<boost::mutex> lock(Worker::mu);
+                        std::cout << "[debug, Worker: " << this->id << "]: exception for key: " << this->current_key << std::endl;
                     }
+
+                    this->current_key += 1;
+
                 }
             }
 
@@ -387,7 +392,7 @@ public:
         } else
             throw std::runtime_error{"Worker already started! 0x0004"};
     }
-    
+
     void stop(){
         this->work = false;
     }
@@ -397,6 +402,8 @@ public:
     }
 
 };
+
+boost::mutex Worker::mu = {};
 
 auto calculate_range = [](uint64_t absolute_key_from, uint64_t absolute_key_to, int size)
         -> boost::container::vector<std::pair<uint64_t, uint64_t>> {
@@ -517,7 +524,7 @@ int main(int argc, const char* argv[]) {
 
         boost::lockfree::spsc_queue<MpiMessage> receive_queue(128);
         boost::lockfree::spsc_queue<MpiMessage> send_queue(128);
-        
+
         auto thread_pool = boost::thread::hardware_concurrency();
         auto used_threads = 2; // MPI_thread, Process_thread
 
@@ -534,10 +541,10 @@ int main(int argc, const char* argv[]) {
 
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
         std::cout << "[debug: " << world.rank() << "] Master (MPI) main thread rank: " << boost::this_thread::get_id() << std::endl;
-        
+
         auto process_thread_implementation = [&]{
             std::cout << "[debug: " << world.rank() << "] Process thread rank: " <<  boost::this_thread::get_id() <<  " has been triggered!" << std::endl;
-            
+
             uint64_t received = 0l;
             while (isAlive){
 
@@ -592,9 +599,9 @@ int main(int argc, const char* argv[]) {
 
                                                 // find next registered message for slave
                                                 wd_it = std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(),
-                                                             [i](const std::pair<uint32_t, std::pair<rank_type, int>>& element){
-                                                                 return element.second.first == i;
-                                                             }
+                                                                     [i](const std::pair<uint32_t, std::pair<rank_type, int>>& element){
+                                                                         return element.second.first == i;
+                                                                     }
                                                 );
                                             }
                                         }
@@ -824,10 +831,10 @@ int main(int argc, const char* argv[]) {
                 };
 
                 message_processing();
-                
+
             }
         };
-        
+
         boost::thread process_thread(process_thread_implementation);
 
         boost::this_thread::sleep_for(boost::chrono::seconds(2));
@@ -856,19 +863,19 @@ int main(int argc, const char* argv[]) {
             std::cout << "[debug: " << world.rank() << "] " << "Watchdog registered message with id: " << msg_id << " for rank: " << i << std::endl;
         }
         std::cout << "[debug: " << world.rank() << "] " << "----- Init ping pong squence: ENDS -----" << std::endl;
-        
+
         while (isAlive) {
             boost::optional<mpi::status> stat = world.iprobe(mpi::any_source, mpi::any_tag);
             if (stat){
                 std::cout << "[debug: " << world.rank() << "] Receive thread has probed a MpiMessage..."<< std::endl;
-                
+
                 MpiMessage received_message;
                 world.recv((*stat).source(), (*stat).tag(), received_message);
                 receive_queue.push(boost::move(received_message));
-                
+
                 std::cout << "[debug: " << world.rank() << "] Receive thread has received MpiMessage\n    data:" << received_message.data << std::endl;
             }
-            
+
             if (!send_queue.empty()){
                 MpiMessage msg;
                 while (send_queue.pop(msg)){
@@ -1169,7 +1176,7 @@ int main(int argc, const char* argv[]) {
                                     ss << avaiable_threads << std::endl;
                                     data_type data{ss.str()};
                                     send_queue.push({mpi_message_id++, msg.sender, world.rank(), MpiMessage::Event::CALLBACK,
-                                             false, data, MpiMessage::Callback{msg.id, msg.event}});
+                                                     false, data, MpiMessage::Callback{msg.id, msg.event}});
                                 } else {
                                     // TODO: send invalide operation...
                                 }
@@ -1211,22 +1218,22 @@ int main(int argc, const char* argv[]) {
 
             message_processing();
         };
-        
+
         boost::thread process_thread(process_thread_implementation);
         process_thread.detach();
-        
+
         while (isAlive) {
             boost::optional<mpi::status> stat = world.iprobe(mpi::any_source, mpi::any_tag);
             if (stat){
                 std::cout << "[debug: " << world.rank() << "] Receive thread has probed a MpiMessage..."<< std::endl;
-                
+
                 MpiMessage received_message;
                 world.recv((*stat).source(), (*stat).tag(), received_message);
                 receive_queue.push(boost::move(received_message));
-                
+
                 std::cout << "[debug: " << world.rank() << "] Receive thread has received MpiMessage\n    data:" << received_message.data << std::endl;
             }
-            
+
             if (!send_queue.empty()){
                 MpiMessage msg;
                 while (send_queue.pop(msg)){
@@ -1241,6 +1248,6 @@ int main(int argc, const char* argv[]) {
         std::cout << "[debug: " << world.rank() << "] Slave: " << world.rank() << " clean up." << std::endl;
         std::cout << "[debug: " << world.rank() << "] *** Slave: " << world.rank() << " has FINISHED! ***" << std::endl;
     }
-    
+
     return EXIT_SUCCESS;
 }
