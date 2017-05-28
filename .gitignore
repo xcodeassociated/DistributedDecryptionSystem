@@ -38,4 +38,4 @@
 DDS/RunTests
 DDS/DDS
 DDS/DDS-Debug
-DDS/*.txt
+DDS/data*.txt
