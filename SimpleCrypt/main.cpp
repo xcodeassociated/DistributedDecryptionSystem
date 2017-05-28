@@ -185,11 +185,8 @@ int main(int argc, const char* argv[]) {
         try {
             std::string decryptedtext;
             CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decryptedtext));
-            std::cout << "1\n";
             stfDecryptor.Put(reinterpret_cast<const unsigned char *>( ciphertext.c_str()), ciphertext.size());
-            std::cout << "2\n";
             stfDecryptor.MessageEnd();
-            std::cout << "3\n";
 
             decryptedtext.erase(std::remove_if(decryptedtext.begin(), decryptedtext.end(),
                                                [](const char &c) { return (c != '\n') ? isalnum(c) == 0 : false; }),
@@ -218,7 +215,7 @@ int main(int argc, const char* argv[]) {
 
         } catch (const CryptoPP::InvalidCiphertext &e) {
             std::cout << "CryptoPP::InvalidCiphertext Exception: " << e.what() << std::endl;
-            //return 1;
+            return 1;
         }
 
         return 0;
