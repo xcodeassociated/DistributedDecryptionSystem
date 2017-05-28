@@ -1,0 +1,228 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <streambuf>
+#include <cctype>
+
+#include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
+
+#include <cryptopp/sha.h>
+#include <cryptopp/aes.h>
+#include <cryptopp/modes.h>
+#include <cryptopp/hex.h>
+#include <cryptopp/files.h>
+
+namespace po = boost::program_options;
+
+void help_print(){
+    std::cout << "Help..." << std::endl;
+}
+
+std::string hashFile(const boost::filesystem::path& file) {
+    std::string result;
+    CryptoPP::SHA1 sha1;
+    CryptoPP::FileSource(file.string().c_str(), true,
+                         new CryptoPP::HashFilter(sha1, new CryptoPP::HexEncoder(
+                                 new CryptoPP::StringSink(result), true)));
+    return result;
+}
+
+std::string hashString(const std::string& str){
+    std::string result;
+    CryptoPP::SHA1 sha1;
+    CryptoPP::StringSource(str, true,
+                           new CryptoPP::HashFilter(sha1, new CryptoPP::HexEncoder(
+                                   new CryptoPP::StringSink(result), true)));
+    return result;
+}
+
+std::vector<unsigned char> uint64ToBytes(uint64_t value)
+{
+    std::vector<unsigned char> result(8, 0x00);
+    result.push_back((value >> 56) & 0xFF);
+    result.push_back((value >> 48) & 0xFF);
+    result.push_back((value >> 40) & 0xFF);
+    result.push_back((value >> 32) & 0xFF);
+    result.push_back((value >> 24) & 0xFF);
+    result.push_back((value >> 16) & 0xFF);
+    result.push_back((value >>  8) & 0xFF);
+    result.push_back((value) & 0xFF );
+    return result;
+}
+
+int main(int argc, const char* argv[]) {
+    std::cout << std::boolalpha;
+
+    po::options_description desc("SimpleCrypt Options");
+    desc.add_options()
+            ("help", "Prints SimpleCrypt help")
+            ("sum", po::value<std::string>(), "Calculates SHA1 for a given file")
+            ("encrypt", po::value<std::string>(), "Encrypts file")
+            ("decrypt", po::value<std::string>(), "Decrypts file")
+            ("output", po::value<std::string>(), "Output file")
+            ("key", po::value<uint64_t>(), "AES Key file - int value")
+            ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+
+    if (vm.count("help")) {
+        ::help_print();
+        return 0;
+    }
+
+    if (vm.count("sum")) {
+        std::string file_path = vm["sum"].as<std::string>();
+        std::string hash = hashFile({file_path});
+
+        std::cout << hash << std::endl;
+        return 0;
+    }
+
+    if (vm.count("encrypt")){
+        if (!vm.count("key")){
+            std::cout << "missing: --key <key_value>" << std::endl;
+            return 1;
+        }
+
+        std::string file_name = vm["encrypt"].as<std::string>();
+        uint64_t key_int = vm["key"].as<uint64_t>();
+        auto key_bytes = ::uint64ToBytes(key_int);
+
+        byte key[ CryptoPP::AES::DEFAULT_KEYLENGTH ];
+        assert(key_bytes.size() == CryptoPP::AES::DEFAULT_KEYLENGTH);
+
+        std::cout << "Key: ";
+        int i = 0;
+        for (const auto& B : key_bytes) {
+            key[i] = B;
+            std::cout << "0x" << std::hex << (0xFF & static_cast<byte>(key[i])) << " ";
+        }
+        std::cout << std::endl;
+
+        byte iv[ CryptoPP::AES::BLOCKSIZE ];
+        memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
+
+        std::ifstream file_stream(file_name);
+        std::stringstream read_stream;
+        read_stream << file_stream.rdbuf();
+        std::string plaintext = read_stream.str();
+
+        std::cout << "Plain Text size: " << plaintext.size() << " bytes" << std::endl;
+        std::cout << "Plain Text data: " << plaintext << std::endl;
+
+        std::string sha1 = ::hashString(plaintext);
+        std::cout << "Plain Text sha1: " << sha1 << std::endl;
+
+        CryptoPP::AES::Encryption aesEncryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
+        CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEncryption( aesEncryption, iv );
+
+        std::string ciphertext;
+        CryptoPP::StreamTransformationFilter stfEncryptor(cbcEncryption, new CryptoPP::StringSink( ciphertext ) );
+        stfEncryptor.Put( reinterpret_cast<const unsigned char*>( plaintext.c_str() ), plaintext.length() + 1 );
+        stfEncryptor.MessageEnd();
+
+        std::cout << "Cipher Text size: " << ciphertext.size() << " bytes" << std::endl;
+        std::cout << "Cipher Text data: ";
+        std::stringstream ss;
+        for( int i = 0; i < ciphertext.size(); i++ ) {
+            ss << "0x" << std::hex << (0xFF & static_cast<byte>(ciphertext[i])) << " ";
+        }
+        std::cout << ss.str() << std::endl;
+
+        if (vm.count("output")){
+            std::string output = vm["output"].as<std::string>();
+            std::cout << "Saving file: " << output << std::endl;
+            std::ofstream os(output);
+            os << ciphertext << std::endl << sha1;
+            os.flush();
+            os.close();
+        }
+
+        return 0;
+    }
+
+    if (vm.count("decrypt")){
+        if (!vm.count("key")){
+            std::cout << "missing: --key <key_value>" << std::endl;
+            return 1;
+        }
+
+        std::string file_name = vm["decrypt"].as<std::string>();
+        uint64_t key_int = vm["key"].as<uint64_t>();
+        auto key_bytes = ::uint64ToBytes(key_int);
+
+        byte key[CryptoPP::AES::DEFAULT_KEYLENGTH];
+        assert(key_bytes.size() == CryptoPP::AES::DEFAULT_KEYLENGTH);
+
+        std::cout << "Key: ";
+        int i = 0;
+        for (const auto& B : key_bytes) {
+            key[i] = B;
+            std::cout << "0x" << std::hex << (0xFF & static_cast<byte>(key[i])) << " ";
+        }
+        std::cout << std::endl;
+
+        byte iv[ CryptoPP::AES::BLOCKSIZE ];
+        memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
+
+        std::ifstream file_stream(file_name);
+        std::string file_content((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
+
+        std::vector<std::string> file_lines;
+        boost::split(file_lines, file_content, boost::is_any_of("\n"));
+
+        std::string ciphertext = file_lines[0];
+        std::string sha1 = file_lines[1];
+
+        std::cout << "ciphertext: " << ciphertext << std::endl;
+        std::cout << "sha1: " << sha1 << std::endl;
+
+        CryptoPP::AES::Decryption aesDecryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
+        CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption( aesDecryption, iv );
+
+        try {
+            std::string decryptedtext;
+            CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decryptedtext));
+            stfDecryptor.Put(reinterpret_cast<const unsigned char *>( ciphertext.c_str()), ciphertext.size());
+            stfDecryptor.MessageEnd();
+
+            decryptedtext.erase(std::remove_if(decryptedtext.begin(), decryptedtext.end(),
+                                               [](const char& c){return (c != '\n') ? isalnum(c) == 0 : false; }),
+                                decryptedtext.end());
+
+            decryptedtext.shrink_to_fit();
+
+            std::cout << "Decrypted size: " << decryptedtext.size() << std::endl;
+            std::cout << "Decrypted: " << decryptedtext << std::endl;
+            std::string decrypted_sha = ::hashString(decryptedtext);
+            std::cout << "decrypted sha1: " << decrypted_sha << std::endl;
+
+            if (decrypted_sha == sha1)
+                std::cout << "checksum match!" << std::endl;
+            else
+                std::cout << "checksum DOESN'T match!" << std::endl;
+
+            if (vm.count("output")){
+                std::string output = vm["output"].as<std::string>();
+                std::cout << "Saving file: " << output << std::endl;
+                std::ofstream os(output);
+                os << decryptedtext;
+                os.flush();
+                os.close();
+            }
+
+        } catch (const CryptoPP::InvalidCiphertext& e) {
+            std::cout << "CryptoPP::InvalidCiphertext Exception: " << e.what() << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    ::help_print();
+    return 0;
+}

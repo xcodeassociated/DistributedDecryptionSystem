@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <utility>
+#include <fstream>
 
 #include <boost/container/vector.hpp>
 #include <boost/container/set.hpp>
@@ -28,10 +29,11 @@
 #define CRYPTO
 
 #ifdef CRYPTO
-#include <cryptopp/modes.h>
+#include <cryptopp/sha.h>
 #include <cryptopp/aes.h>
-#include <cryptopp/filters.h>
-
+#include <cryptopp/modes.h>
+#include <cryptopp/hex.h>
+#include <cryptopp/files.h>
 #endif
     
 namespace mpi = boost::mpi;
@@ -230,19 +232,13 @@ private:
     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_tx_ptr = nullptr;
     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_rx_ptr = nullptr;
     boost::shared_ptr<syscom_message_counter> syscom_message_counter_ptr = nullptr;
-    
+
+    std::string file_path = "";
+    std::string decrypted_file_path = "";
+
 public:
-    explicit Worker(int _id,
-                    boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_tx_ref,
-                    boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_rx_ref,
-                    boost::shared_ptr<syscom_message_counter> counter_ptr)
-            : id{_id},
-              syscom_tx_ptr{syscom_tx_ref},
-              syscom_rx_ptr{syscom_rx_ref},
-              syscom_message_counter_ptr{counter_ptr}
-    {}
     
-    explicit Worker(int _id, KeyRange _range,
+    explicit Worker(int _id, KeyRange _range, std::string _file_path, std::string _decrypted_path,
                     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_tx_ref,
                     boost::shared_ptr<boost::lockfree::spsc_queue<SysComMessage>> syscom_rx_ref,
                     boost::shared_ptr<syscom_message_counter> counter_ptr)
@@ -250,19 +246,31 @@ public:
               range(_range),
               syscom_tx_ptr{syscom_tx_ref},
               syscom_rx_ptr{syscom_rx_ref},
-              syscom_message_counter_ptr{counter_ptr}
-    {}
-    
-    void setRange(KeyRange&& _range){
-        this->range = _range;
+              syscom_message_counter_ptr{counter_ptr},
+              file_path{_file_path},
+              decrypted_file_path{_decrypted_path}
+    { ; }
+
+    std::vector<unsigned char> uint64ToBytes(uint64_t value) noexcept {
+        std::vector<unsigned char> result(8, 0x00);
+        result.push_back((value >> 56) & 0xFF);
+        result.push_back((value >> 48) & 0xFF);
+        result.push_back((value >> 40) & 0xFF);
+        result.push_back((value >> 32) & 0xFF);
+        result.push_back((value >> 24) & 0xFF);
+        result.push_back((value >> 16) & 0xFF);
+        result.push_back((value >>  8) & 0xFF);
+        result.push_back((value) & 0xFF );
+        return result;
     }
-    
-    void setRange(uint64_t _begin, uint64_t _end){
-        this->setRange({_begin, _end});
-    }
-    
-    auto getRange(void) -> KeyRange {
-        return this->range;
+
+    std::string hashString(const std::string& str) noexcept {
+        std::string result;
+        CryptoPP::SHA1 sha1;
+        CryptoPP::StringSource(str, true,
+                               new CryptoPP::HashFilter(sha1, new CryptoPP::HexEncoder(
+                                       new CryptoPP::StringSink(result), true)));
+        return result;
     }
 
     void worker_process() {
@@ -303,27 +311,70 @@ public:
 
                     SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::WORKER_DONE, false, "done"};
                     this->syscom_tx_ptr->push(syscom_msg);
+
                 } else {
 
-                    // test key match
-                    if ((this->current_key == ::test_match) && (::test_match != 0)) {
-                        SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::KEY_FOUND, false, std::to_string(this->current_key)};
-                        this->syscom_tx_ptr->push(syscom_msg);
+                    auto key_bytes = this->uint64ToBytes(this->current_key);
 
-                        // TODO: work around...
-                        this->current_key++;
-                    } else {
-                        // keep working...
+                    byte key[CryptoPP::AES::DEFAULT_KEYLENGTH];
+                    assert(key_bytes.size() == CryptoPP::AES::DEFAULT_KEYLENGTH);
+
+                    int i = 0;
+                    for (const auto& B : key_bytes) {
+                        key[i] = B;
+                    }
+
+                    byte iv[ CryptoPP::AES::BLOCKSIZE ];
+                    memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
+
+                    std::ifstream file_stream(this->file_path);
+                    std::string file_content((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
+
+                    std::vector<std::string> file_lines;
+                    boost::split(file_lines, file_content, boost::is_any_of("\n"));
+
+                    std::string ciphertext = file_lines[0];
+                    std::string sha1 = file_lines[1];
+
+                    CryptoPP::AES::Decryption aesDecryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
+                    CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption( aesDecryption, iv );
+
+                    try {
+                        std::string decryptedtext;
+                        CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decryptedtext));
+                        stfDecryptor.Put(reinterpret_cast<const unsigned char *>( ciphertext.c_str()), ciphertext.size());
+                        stfDecryptor.MessageEnd();
+
+                        decryptedtext.erase(std::remove_if(decryptedtext.begin(), decryptedtext.end(),
+                                                           [](const char& c){return (c != '\n') ? isalnum(c) == 0 : false; }),
+                                            decryptedtext.end());
+
+                        decryptedtext.shrink_to_fit();
+
+                        std::string decrypted_sha = this->hashString(decryptedtext);
+
+                        if (decrypted_sha == sha1) {
+                            SysComMessage syscom_msg{(*this->syscom_message_counter_ptr)++, this->id, SysComMessage::Event::KEY_FOUND, false, std::to_string(this->current_key)};
+                            this->syscom_tx_ptr->push(syscom_msg);
+                            this->stop();
+
+                            std::ofstream os(this->decrypted_file_path);
+                            os << decryptedtext;
+                            os.flush();
+                            os.close();
+                        }
+
+                    } catch (const CryptoPP::InvalidCiphertext& e) {
+                        // ...
                         this->current_key++;
                     }
                 }
             }
 
-            boost::this_thread::sleep_for(boost::chrono::nanoseconds(5));
+            //boost::this_thread::sleep_for(boost::chrono::nanoseconds(5));
         }
     }
 
-    // TODO: CryptoCPP
     void start(){
         if (!this->process) {
             this->process = true;
@@ -392,6 +443,9 @@ struct Options{
 
 bool isAlive = true;
 
+std::string encrypted_file = "";
+std::string decrypt_file = "decrypted.txt";
+
 int main(int argc, const char* argv[]) {
     std::cout << std::boolalpha;
     std::cout.sync_with_stdio(true);
@@ -403,7 +457,9 @@ int main(int argc, const char* argv[]) {
             ("help", "produce help MpiMessage")
             ("from", po::value<uint64_t>(), "set key range BEGIN value")
             ("to", po::value<uint64_t>(), "set key range END value")
-            ("test_match", po::value<uint64_t>(), "set test match key");
+            ("encrypted", po::value<std::string>(), "encrypted file path")
+            ("decrypt", po::value<std::string>(), "decrypted file path")
+            ;
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -428,8 +484,17 @@ int main(int argc, const char* argv[]) {
         return 1;
     }
 
-    if (vm.count("test_match")) {
-        ::test_match = vm["test_match"].as<uint64_t>();
+    if (vm.count("encrypted")) {
+        ::encrypted_file = vm["encrypted"].as<std::string>();
+    } else {
+        std::cerr << "Encrypted file path missing!" << std::endl;
+        return 1;
+    }
+
+    if (vm.count("decrypt")) {
+        ::decrypt_file = vm["decrypt"].as<std::string>();
+    } else {
+        std::cout << "Decrypt file path not set... Using default: " << ::decrypt_file << std::endl;
     }
 
     assert(options.absolute_key_from >= 0 && options.absolute_key_to > 0);
@@ -744,6 +809,9 @@ int main(int argc, const char* argv[]) {
 
                                 uint64_t range_begin = boost::lexical_cast<uint64_t>(range_str[0]);
                                 uint64_t range_end = boost::lexical_cast<uint64_t>(range_str[1]);
+
+                                // TODO: handle slave worker done...
+
                             }break;
 
                             default:{
@@ -869,7 +937,7 @@ int main(int argc, const char* argv[]) {
                     std::cout << "[debug: " << world.rank() << "] Preparing Worker for thread: " << i << std::endl;
 
                     auto thread_task = [i, sc_rx, sc_tx, syscom_message_counter_ptr, &worker_pointers, &worker_ranges]{
-                        boost::shared_ptr<Worker> worker_ptr = boost::make_shared<Worker>(i, Worker::KeyRange{worker_ranges[i].first, worker_ranges[i].second}, sc_rx, sc_tx, syscom_message_counter_ptr);
+                        boost::shared_ptr<Worker> worker_ptr = boost::make_shared<Worker>(i, Worker::KeyRange{worker_ranges[i].first, worker_ranges[i].second}, ::encrypted_file, ::decrypt_file, sc_rx, sc_tx, syscom_message_counter_ptr);
                         worker_pointers.push_back(worker_ptr);
                         worker_ptr->start();
                     };
