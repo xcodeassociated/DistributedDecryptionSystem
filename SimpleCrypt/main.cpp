@@ -1,8 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <streambuf>
-#include <cctype>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -48,7 +46,7 @@ std::vector<unsigned char> uint64ToBytes(uint64_t value)
     result.push_back((value >> 24) & 0xFF);
     result.push_back((value >> 16) & 0xFF);
     result.push_back((value >>  8) & 0xFF);
-    result.push_back((value) & 0xFF );
+    result.push_back((value) & 0xFF);
     return result;
 }
 
@@ -136,7 +134,7 @@ int main(int argc, const char* argv[]) {
             std::string output = vm["output"].as<std::string>();
             std::cout << "Saving file: " << output << std::endl;
             std::ofstream os(output);
-            os << ciphertext << std::endl << sha1;
+            os << sha1 << std::endl << ciphertext << std::endl;
             os.flush();
             os.close();
         }
@@ -173,11 +171,16 @@ int main(int argc, const char* argv[]) {
         std::vector<std::string> file_lines;
         boost::split(file_lines, file_content, boost::is_any_of("\n"));
 
-        std::string ciphertext = file_lines[0];
-        std::string sha1 = file_lines[1];
+        std::string sha1 = file_lines[0];
+        std::string ciphertext = "";
+        for (int i = 1; i < file_lines.size(); i++) {
+            ciphertext += file_lines[i];
+            if (i < file_lines.size() - 2)
+                ciphertext += '\n';
+        }
 
-        std::cout << "ciphertext: " << ciphertext << std::endl;
         std::cout << "sha1: " << sha1 << std::endl;
+        std::cout << "ciphertext: " << ciphertext << std::endl;
 
         CryptoPP::AES::Decryption aesDecryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
         CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv);
