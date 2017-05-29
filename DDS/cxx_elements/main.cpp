@@ -818,6 +818,7 @@ int main(int argc, const char* argv[]) {
                                 uint64_t range_end = boost::lexical_cast<uint64_t>(range_str[1]);
 
                                 // TODO: handle slave worker done...
+                                std::cout << "[info: " << world.rank() << "] Slave's: " << msg.sender << " finished range: [" << range_begin << ", " << range_end << "]" << std::endl;
 
                             }break;
 
@@ -1194,7 +1195,7 @@ int main(int argc, const char* argv[]) {
                             }break;
 
                             case MpiMessage::Event::SLAVE_REARRANGE:{
-
+                                /* This message will be required for future DDS feature */
                             }break;
 
                             default: {

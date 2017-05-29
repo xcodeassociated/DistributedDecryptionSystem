@@ -24,140 +24,66 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 message (STATUS "Build DIR: ${CMAKE_CURRENT_BINARY_DIR}")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
-
     message(STATUS "Linux")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
+endif()
 
-    if (ARM)
-        ## Linux amdhf only config
+if (ARM)
 
-        ## doesn't work since Clion 2017.1 - Need to manually pass the C and CXX compiler as cmake argument:
-        #  -DCMAKE_C_COMPILER=<C_COMPILER> -DCMAKE_CXX_COMPILER=<CXX_COMPILER>
-        #
-        #        set(CROSS_COMPILER_PATH /usr/bin/)
-        #        set(TOOLCHAIN_PREFIX ${CROSS_COMPILER_PATH}arm-linux-gnueabihf)
-        #        set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
-        #        set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/")
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
 
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/")
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/")
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/")
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/")
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/arm-linux-gnueabihf/")
 
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/")
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/")
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/")
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/arm-linux-gnueabihf/")
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/cryptopp/")
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/crypto++/")
 
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/cryptopp/")
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/crypto++/")
-
-        set (BOOST_ROOT "/home/jm/arm-linux-gnueabihf-pi/usr/")
-        set (BOOST_LIBRARYDIR "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf")
-        find_package(Boost COMPONENTS mpi serialization chrono thread system REQUIRED) ## BOOST version can be specified as 2nd argument
-        if(Boost_FOUND)
-            message(STATUS "ARM_BOOST Found!")
-            message(STATUS "ARM_Boost version: ${Boost_VERSION}")
-            message(STATUS "ARM_Boost include: ${Boost_INCLUDE_DIRS}")
-        endif()
-
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/openmpi/")
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/openmpi/include/")
-        set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/openmpi/lib/")
-
-        find_package(MPI REQUIRED)
-        if(MPI_FOUND)
-            message(STATUS "ARM_MPI Found!")
-        endif()
-
-        include_directories("/home/jm/arm-linux-gnueabihf-pi/usr/include/")
-        include_directories(${MPI_INCLUDE_PATH})
-        include_directories(${Boost_INCLUDE_DIRS})
-
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread ")
-
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/home/jm/arm-linux-gnueabihf-pi/lib/")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
-
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ldl -fPIC -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf/openmpi/lib -Wl,--enable-new-dtags -L/usr/lib/arm-linux-gnueabihf/openmpi/lib")
-
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf/")
-
-        # to link shared library when running on cluster
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,/mpi/DDS")
-
-    else()
-        ## Linux amd64 only configuration
-
-        set (CMAKE_PREFIX_PATH "/usr/include")
-        set (CMAKE_PREFIX_PATH "/usr/include/cryptopp/")
-        set (CMAKE_PREFIX_PATH "/usr/include/mpi")
-        set (CMAKE_PREFIX_PATH "/usr/include/openmpi")
-        set (CMAKE_PREFIX_PATH "/usr/include/boost")
-
-        set (CMAKE_PREFIX_PATH "/usr/lib/")
-        set (CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/")
-
-        include_directories("/usr/include/mpi")
-        include_directories(${MPI_INCLUDE_PATH})
-        include_directories(${Boost_INCLUDE_DIRS})
-        include_directories("/usr/include/cryptopp/")
-
-        find_package(MPI REQUIRED)
-        if(MPI_FOUND)
-            message(STATUS "MPI Found!")
-            message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
-        endif()
-
-        find_package(Boost COMPONENTS mpi serialization program_options chrono thread system REQUIRED) ## BOOST version can be specified as 2nd argument
-        if(Boost_FOUND)
-            message(STATUS "Boost Found!")
-            message(STATUS "Boost version: ${Boost_VERSION}")
-            message(STATUS "Boost include: ${Boost_INCLUDE_DIRS}")
-            message(STATUS "Boost libs: ${Boost_LIBRARY_DIRS}")
-        endif()
-
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/openmpi/lib -Wl,--enable-new-dtags")
-
-        set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/cryptopp-cmake")
-        find_package(CryptoPP REQUIRED)
-
-        if (CryptoPP_FOUND)
-            message(STATUS "Crypto++ found!")
-        endif()
-
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-
-
+    set (BOOST_ROOT "/home/jm/arm-linux-gnueabihf-pi/usr/")
+    set (BOOST_LIBRARYDIR "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf")
+    find_package(Boost COMPONENTS mpi serialization chrono thread system REQUIRED) ## BOOST version can be specified as 2nd argument
+    if(Boost_FOUND)
+        message(STATUS "ARM_BOOST Found!")
+        message(STATUS "ARM_Boost version: ${Boost_VERSION}")
+        message(STATUS "ARM_Boost include: ${Boost_INCLUDE_DIRS}")
     endif()
 
-elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    ## macOS x64 only config
-    message(STATUS "macOS")
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/openmpi/")
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/openmpi/include/")
+    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/openmpi/lib/")
 
-    set (CMAKE_PREFIX_PATH "/usr/include")
-    set (CMAKE_PREFIX_PATH "/usr/lib/")
-    set (CMAKE_PREFIX_PATH "/usr/local/opt/")
+    find_package(MPI REQUIRED)
+    if(MPI_FOUND)
+        message(STATUS "ARM_MPI Found!")
+    endif()
 
-    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/cryptopp/5.6.5/")
-    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/cryptopp/5.6.5/include/")
-    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/cryptopp/5.6.5/lib/")
-    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/open-mpi/1.10.2_1/")
-    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/open-mpi/1.10.2_1/include/")
-    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/open-mpi/1.10.2_1/lib/")
-
-    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/boost/1.60.0_2/")
-    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/boost/1.60.0_2/include/")
-    set (CMAKE_PREFIX_PATH "/usr/local/Cellar/boost/1.60.0_2/lib/")
-
-    set (BOOST_ROOT "/usr/local/Cellar/boost/1.60.0_2/")
-
+    include_directories("/home/jm/arm-linux-gnueabihf-pi/usr/include/")
     include_directories(${MPI_INCLUDE_PATH})
     include_directories(${Boost_INCLUDE_DIRS})
-    include_directories("/usr/local/Cellar/cryptopp/5.6.5/include/")
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread ")
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/home/jm/arm-linux-gnueabihf-pi/lib/")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ldl -fPIC -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf/openmpi/lib -Wl,--enable-new-dtags -L/usr/lib/arm-linux-gnueabihf/openmpi/lib")
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf/")
+
+    # to link shared library when running on cluster
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,/mpi/DDS")
+
+else()
+    include_directories(${MPI_INCLUDE_PATH})
+    include_directories(${Boost_INCLUDE_DIRS})
+    include_directories("${CRYPTOPP_INCLUDE_DIR}")
 
     find_package(MPI REQUIRED)
     if(MPI_FOUND)
@@ -165,7 +91,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
     endif()
 
-    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system REQUIRED) ## BOOST version can be specified as 2nd argument
+    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system REQUIRED)
     if(Boost_FOUND)
         message(STATUS "Boost Found!")
         message(STATUS "Boost version: ${Boost_VERSION}")
@@ -173,16 +99,16 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         message(STATUS "Boost libs: ${Boost_LIBRARY_DIRS}")
     endif()
 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/openmpi/lib -Wl,--enable-new-dtags")
+
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/cryptopp-cmake")
     find_package(CryptoPP REQUIRED)
 
     if (CryptoPP_FOUND)
         message(STATUS "Crypto++ found!")
     endif()
-
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-
 endif()
+
 
 if (O)
     if (O STREQUAL "0")
@@ -202,7 +128,6 @@ endif()
 set(APP_CORE cxx_elements/core_application)
 set(CXX cxx_elements)
 
-## includes for main.cpp
 include_directories(${APP_CORE}/MasterNode/MainClass)
 include_directories(${APP_CORE}/SlaveNode/MainClass)
 include_directories(${CXX})
