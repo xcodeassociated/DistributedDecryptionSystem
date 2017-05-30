@@ -35,7 +35,9 @@
 */cmake-build-*/
 
 # google test dir - with cloned repo
+!DDS/cxx_tests/test_libs/CMakeLists.txt
 !DDS/cxx_tests/test_libs/googletest/
+!DDS/cxx_tests/test_libs/README.txt
 DDS/cxx_tests/test_libs/googletest/*
 
 # DDS binaries
@@ -43,4 +45,5 @@ DDS/RunTests
 DDS/DDS
 DDS/DDS-Debug
 DDS/DDS_*
+!DDS/DDS_*.sh
 DDS/data*.txt
