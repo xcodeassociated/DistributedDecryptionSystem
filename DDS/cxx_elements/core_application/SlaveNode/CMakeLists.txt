@@ -1,6 +1,10 @@
-set(SlaveNodeObjectSOURCES
-        MainClass/SlaveMainClass.hpp
-        MainClass/SlaveMainClass.cpp)
 
-## keyword STATIC for static lib linking
+add_subdirectory(Worker)
+
+set(SlaveNodeObjectSOURCES
+        Slave/Slave.hpp
+        Slave/Slave.cpp)
+
 add_library(SlaveNodeObject SHARED ${SlaveNodeObjectSOURCES})
+
+target_link_libraries(SlaveNodeObject DecryptorLib)

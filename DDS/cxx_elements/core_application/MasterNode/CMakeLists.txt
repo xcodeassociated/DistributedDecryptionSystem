@@ -1,6 +1,5 @@
 set(MasterNodeObjectSOURCES
-        MainClass/MasterMainClass.hpp
-        MainClass/MasterMainClass.cpp)
+        Master/Master.hpp
+        Master/Master.cpp)
 
-## keyword STATIC for static lib linking
 add_library(MasterNodeObject SHARED ${MasterNodeObjectSOURCES})

@@ -2,7 +2,7 @@
 ## DDS Project CMakeLists.txt - Main app config file
 ##
 ## TODO: Clean CMakeLists.txt to make it more generic for use without cmake hardcoded env variables
-##
+## TODO: Remove my local ARM CMAKE setup - this is for testing only
 ########################################################################################################################
 
 cmake_minimum_required(VERSION 3.5.1)
@@ -11,12 +11,10 @@ project(DDS)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "Source DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
-## cmake options
 option(ARM "Build for armhf" OFF)
-
 option(O "Optimalize" 0)
-
 option(CP "copy exec to given location" "")
+option(GTEST_DIR "GoogleTest lib directory")
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
@@ -34,7 +32,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 if (ARM)
-
     set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/")
     set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
 
@@ -125,11 +122,13 @@ endif()
 set(APP_CORE cxx_elements/core_application)
 set(CXX cxx_elements)
 
-include_directories(${APP_CORE}/MasterNode/MainClass)
-include_directories(${APP_CORE}/SlaveNode/MainClass)
+include_directories(${CXX}/common/Logger)
+include_directories(${APP_CORE}/MasterNode/Master)
+include_directories(${APP_CORE}/SlaveNode/Slave)
 include_directories(${CXX})
+include_directories(${APP_CORE}/SlaveNode/SlaveClass/Worker)
 
-set(MOCKS_DIR cxx_tests/test_source/mocks_headres)
+set(MOCKS_DIR cxx_tests/test_mocked_headres)
 
 add_subdirectory(${CXX})
 
@@ -140,8 +139,8 @@ set(SOURCE_FILES ${CXX}/main.cpp)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 if (ARM)
-    ## TODO: Make ARM cross-compiler able to use Boost cmake module to link BOOST libs
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(
+            ${PROJECT_NAME}
             ${MPI_LIBRARIES}
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_mpi.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_serialization.so
@@ -155,14 +154,17 @@ if (ARM)
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so.5
             /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libudev.so.1
             /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libpthread.so.0
+            LoggerLib
             MasterNodeObject
             SlaveNodeObject)
 else()
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(
+            ${PROJECT_NAME}
             ${MPI_LIBRARIES}
             ${Boost_LIBRARIES}
             ${CRYPTOPP_LIBRARY}
             pthread
+            LoggerLib
             MasterNodeObject
             SlaveNodeObject)
 endif()
