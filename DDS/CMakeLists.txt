@@ -99,8 +99,6 @@ else()
         message(STATUS "Boost libs: ${Boost_LIBRARY_DIRS}")
     endif()
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/openmpi/lib -Wl,--enable-new-dtags")
-
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/cryptopp-cmake")
     find_package(CryptoPP REQUIRED)
 
@@ -120,7 +118,6 @@ if (O)
     elseif(O STREQUAL "3")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
     else()
-        ## by default turn off optimization - for debugging
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
     endif()
 endif()
