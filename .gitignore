@@ -36,9 +36,8 @@
 
 # google test dir - with cloned repo
 !DDS/cxx_tests/test_libs/CMakeLists.txt
-!DDS/cxx_tests/test_libs/googletest/
 !DDS/cxx_tests/test_libs/README.txt
-DDS/cxx_tests/test_libs/googletest/*
+DDS/cxx_tests/test_libs/*
 
 # DDS binaries
 DDS/RunTests

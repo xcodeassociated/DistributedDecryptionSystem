@@ -1,3 +1,5 @@
+include_directories(Worker/WorkerBase)
+include_directories(Worker/Decryptor)
 
 add_subdirectory(Worker)
 

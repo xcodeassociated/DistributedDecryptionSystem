@@ -1,3 +1,5 @@
+include_directories(WorkerBase)
+
 set(WorkerBaseLibSOURCES
         WorkerBase/WorkerBase.hpp
         WorkerBase/WorkerBase.cpp)

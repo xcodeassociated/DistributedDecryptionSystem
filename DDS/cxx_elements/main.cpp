@@ -967,7 +967,7 @@ int main(int argc, const char* argv[]) {
             auto process_syscom_message = [&](SysComMessage& sys_msg) {
                 switch (sys_msg.event) {
                     case SysComMessage::Event::PING: {
-                        std::cout << "[debug: " << world.rank() << "] SysCom: PING EVENT: "
+                        std::cout << "[debug: " << world.rank() << "] Syscom: PING EVENT: "
                                   << "{rank:" << sys_msg.rank << ", data: " << sys_msg.data << "}"
                                   << std::endl;
 
@@ -977,7 +977,7 @@ int main(int argc, const char* argv[]) {
                     case SysComMessage::Event::CALLBACK: {
                         SysComMessage::Callback cb = *(sys_msg.respond_to);
 
-                        std::cout << "[debug: " << world.rank() << "] SysCom: CALLBACK EVENT: "
+                        std::cout << "[debug: " << world.rank() << "] Syscom: CALLBACK EVENT: "
                                   << "{rank:" << sys_msg.rank << " respons to: {message_id: "
                                   << cb.message_id << ", type: " << std::to_string(
                                 static_cast<int>(cb.event)) << "}" << ", data: " << sys_msg.data << "}"
@@ -986,7 +986,7 @@ int main(int argc, const char* argv[]) {
                         switch (cb.event) {
                             case SysComMessage::Event::PING: {
                                 std::cout << "[debug: " << world.rank()
-                                          << "] SysCom: Processing CALLBACK event for PING: "
+                                          << "] Syscom: Processing CALLBACK event for PING: "
                                           << sys_msg.rank << "..." << std::endl;
 
                                 // TODO: abstract PING registration logic to class
@@ -1010,7 +1010,7 @@ int main(int argc, const char* argv[]) {
                                     report_str.erase(report_str.begin() + report_str.length() - 1);
 
                                     std::cout << "[debug: " << world.rank()
-                                              << "] SysCom: Processing CALLBACK event for PING: "
+                                              << "] Syscom: Processing CALLBACK event for PING: "
                                               << sys_msg.rank << ", sending data: {" << report_str << "}"
                                               << std::endl;
 
@@ -1031,8 +1031,8 @@ int main(int argc, const char* argv[]) {
                             }break;
 
                             case SysComMessage::Event::INTERRUPT: {
-                                std::cout << "[debug: " << world.rank() << "] SysCom: Processing CALLBACK event for INTERRUPT form Worker: " << sys_msg.rank << std::endl;
-                                std::cout << "[debug: " << world.rank() << "] SysCom: Worker: " << sys_msg.rank << " is turned off!" << std::endl;
+                                std::cout << "[debug: " << world.rank() << "] Syscom: Processing CALLBACK event for INTERRUPT form Worker: " << sys_msg.rank << std::endl;
+                                std::cout << "[debug: " << world.rank() << "] Syscom: Worker: " << sys_msg.rank << " is turned off!" << std::endl;
 
                                 auto it = std::find(worker_alive.begin(), worker_alive.end(), std::pair<int, bool>(sys_msg.rank, true));
                                 if (it == worker_alive.end())
@@ -1046,9 +1046,9 @@ int main(int argc, const char* argv[]) {
                                 }
 
                                 if (still_alive > 0)
-                                    std::cout << "[debug: " << world.rank() << "] SysCom: There are still: " << still_alive << " workers ALIVE. " << std::endl;
+                                    std::cout << "[debug: " << world.rank() << "] Syscom: There are still: " << still_alive << " workers ALIVE. " << std::endl;
                                 else {
-                                    std::cout << "[debug: " << world.rank() << "] SysCom: There are NO workers up! Slave node: " << world.rank()  << " is about to close - Sending message to Master" << std::endl;
+                                    std::cout << "[debug: " << world.rank() << "] Syscom: There are NO workers up! Slave node: " << world.rank()  << " is about to close - Sending message to Master" << std::endl;
 
                                     int i = 0;
                                     for (auto& thread_ptr : thread_array) {
@@ -1069,7 +1069,7 @@ int main(int argc, const char* argv[]) {
                     }break;
 
                     case SysComMessage::Event::WORKER_DONE: {
-                        std::cout << "[debug: " << world.rank() << "] SysCom: Processing *** WORKER DONE for Worker thread: " << sys_msg.rank << " ***"<< std::endl;
+                        std::cout << "[debug: " << world.rank() << "] Syscom: Processing *** WORKER DONE for Worker thread: " << sys_msg.rank << " ***"<< std::endl;
 
                         auto it = std::find_if(worker_running.begin(), worker_running.end(), [&](const auto& e) {
                             return e.first == sys_msg.rank && e.second == true;
@@ -1090,13 +1090,13 @@ int main(int argc, const char* argv[]) {
                         send_queue.push({mpi_message_id++, 0, world.rank(), MpiMessage::Event::SLAVE_WORKER_DONE, false, ss.str()});
 
                         if (new_key_ranges.size() > 0){
-                            std::cout << "[debug: " << world.rank() << "] SysCom: Assigning a new key range to worker..." << std::endl;
+                            std::cout << "[debug: " << world.rank() << "] Syscom: Assigning a new key range to worker..." << std::endl;
                             // TODO: if the worker has finished it's own job, assigne a new key range to process if there is one...
                         }else {
                             // wait until last worker is processing... if the last has finished and there's no new key range to process kill workers
                             if (still_running == 0) {
                                 std::cout << "[debug: " << world.rank()
-                                          << "] SysCom: There is no need for handle new key range & all workers has finished. Sending INTERRUPT to ALL workers."
+                                          << "] Syscom: There is no need for handle new key range & all workers has finished. Sending INTERRUPT to ALL workers."
                                           << std::endl;
 
                                 int i = 0;
@@ -1106,7 +1106,7 @@ int main(int argc, const char* argv[]) {
                                 }
 
                             }else{
-                                std::cout << "[debug: " << world.rank() << "] SysCom: There are still: " << still_running << " workers working." << std::endl;
+                                std::cout << "[debug: " << world.rank() << "] Syscom: There are still: " << still_running << " workers working." << std::endl;
                             }
                         }
                     }break;

@@ -123,19 +123,18 @@ set(APP_CORE cxx_elements/core_application)
 set(CXX cxx_elements)
 
 include_directories(${CXX}/common/Logger)
+include_directories(${CXX}/common/Message/MPI)
+include_directories(${CXX}/common/Message/Syscom)
 include_directories(${APP_CORE}/MasterNode/Master)
 include_directories(${APP_CORE}/SlaveNode/Slave)
 include_directories(${CXX})
 include_directories(${APP_CORE}/SlaveNode/SlaveClass/Worker)
 
 set(MOCKS_DIR cxx_tests/test_mocked_headres)
-
 add_subdirectory(${CXX})
-
 add_subdirectory(cxx_tests)
 
 set(SOURCE_FILES ${CXX}/main.cpp)
-
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 if (ARM)

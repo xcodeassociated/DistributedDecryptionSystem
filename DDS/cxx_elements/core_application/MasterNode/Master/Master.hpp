@@ -5,7 +5,9 @@
 #ifndef DDS_MASTERMAINCLASS_HPP
 #define DDS_MASTERMAINCLASS_HPP
 
+#include <MPIMessage.hpp>
 #include <Logger.hpp>
+#include <Watchdog.hpp>
 
 namespace core {
     
