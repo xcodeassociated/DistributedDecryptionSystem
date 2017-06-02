@@ -9,13 +9,9 @@
 #include <Logger.hpp>
 #include <Watchdog.hpp>
 
-namespace core {
-    
-    class Master {
-    public:
-        bool init(void);
-    };
-    
-}
+class Master {
+public:
+    bool init(void);
+};
 
 #endif //DDS_MASTERMAINCLASS_HPP

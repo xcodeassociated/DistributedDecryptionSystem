@@ -10,13 +10,9 @@
 #include <Logger.hpp>
 #include <Decryptor.hpp>
 
-namespace core {
-    
-    class Slave {
-    public:
-        bool init(void);
-    };
-    
-}
+class Slave {
+public:
+    bool init(void);
+};
 
 #endif //DDS_SLAVEMAINCLASS_HPP

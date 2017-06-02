@@ -4,6 +4,6 @@
 
 #include "Slave.hpp"
 
-bool core::Slave::init() {
+bool Slave::init() {
     return false;
 }

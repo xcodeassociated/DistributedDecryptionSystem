@@ -4,6 +4,6 @@
 
 #include "Master.hpp"
 
-bool core::Master::init() {
+bool Master::init() {
     return false;
 }

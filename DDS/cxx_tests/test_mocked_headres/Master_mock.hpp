@@ -13,7 +13,7 @@
 #include "Master.hpp"
 
 namespace mock {
-    class Master_mock : public core::Master {
+    class Master_mock : public Master {
     public:
         Master_mock() {
             ON_CALL(*this, foo()).

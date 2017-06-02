@@ -13,7 +13,7 @@
 #include "Slave.hpp"
 
 namespace mock {
-    class Slave_mock : public core::Slave {
+    class Slave_mock : public Slave {
     public:
         Slave_mock() {
             ON_CALL(*this, foo()).
