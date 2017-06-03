@@ -324,11 +324,13 @@ public:
                     memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
 
                     // TODO: make file load only once
-                    std::ifstream file_stream(this->file_path);
-                    std::string file_content((std::istreambuf_iterator<char>(file_stream)), std::istreambuf_iterator<char>());
+                    std::ifstream file_stream(this->file_path, std::ios::binary);
+                    std::stringstream read_stream;
+                    read_stream << file_stream.rdbuf();
+                    std::string read_stream_str = read_stream.str();
 
                     std::vector<std::string> file_lines;
-                    boost::split(file_lines, file_content, boost::is_any_of("\n"));
+                    boost::split(file_lines, read_stream_str, boost::is_any_of("\n"));
 
                     std::string sha1 = file_lines[0];
                     std::string ciphertext = "";
@@ -347,11 +349,8 @@ public:
                         stfDecryptor.Put(reinterpret_cast<const unsigned char *>(ciphertext.c_str()), ciphertext.size());
                         stfDecryptor.MessageEnd();
 
-                        decryptedtext.erase(std::remove_if(decryptedtext.begin(), decryptedtext.end(),
-                                                           [](const char& c){return (c != '\n') ? isalnum(c) == 0 : false; }),
-                                            decryptedtext.end());
-
-                        decryptedtext.shrink_to_fit();
+                        if (decryptedtext.back() == '\0')
+                            decryptedtext.pop_back();
 
                         std::string decrypted_sha = this->hashString(decryptedtext);
 
@@ -362,7 +361,7 @@ public:
                             this->syscom_tx_ptr->push(syscom_msg);
                             this->stop();
 
-                            std::ofstream os(this->decrypted_file_path);
+                            std::ofstream os(this->decrypted_file_path, std::ios::binary);
                             os << decryptedtext;
                             os.flush();
                             os.close();
