@@ -78,18 +78,20 @@ if (ARM)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,/mpi/DDS")
 
 else()
-    include_directories(${MPI_INCLUDE_PATH})
-    include_directories(${Boost_INCLUDE_DIRS})
-    include_directories("${CRYPTOPP_INCLUDE_DIR}")
 
     find_package(MPI REQUIRED)
     if(MPI_FOUND)
+        include_directories(${MPI_INCLUDE_PATH})
+
         message(STATUS "MPI Found!")
         message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
+        message(STATUS "MPI libs: ${MPI_LIBRARIES}")
     endif()
 
     find_package(Boost COMPONENTS mpi serialization program_options chrono thread system REQUIRED)
     if(Boost_FOUND)
+        include_directories(${Boost_INCLUDE_DIRS})
+
         message(STATUS "Boost Found!")
         message(STATUS "Boost version: ${Boost_VERSION}")
         message(STATUS "Boost include: ${Boost_INCLUDE_DIRS}")
@@ -100,7 +102,11 @@ else()
     find_package(CryptoPP REQUIRED)
 
     if (CryptoPP_FOUND)
+        include_directories("${CRYPTOPP_INCLUDE_DIR}")
+
         message(STATUS "Crypto++ found!")
+        message(STATUS "Crypto++ include: ${CRYPTOPP_INCLUDE_DIR}")
+        message(STATUS "Crypto++ libs: ${CRYPTOPP_LIBRARY}")
     endif()
 endif()
 
@@ -128,7 +134,6 @@ include_directories(${CXX}/common/Message/Syscom)
 include_directories(${APP_CORE}/MasterNode/Master)
 include_directories(${APP_CORE}/SlaveNode/Slave)
 include_directories(${CXX})
-include_directories(${APP_CORE}/SlaveNode/SlaveClass/Worker)
 
 set(MOCKS_DIR cxx_tests/test_mocked_headres)
 add_subdirectory(${CXX})

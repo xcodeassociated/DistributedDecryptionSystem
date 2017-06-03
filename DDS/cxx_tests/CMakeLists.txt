@@ -6,6 +6,12 @@ enable_testing()
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 include_directories(${gmock_SOURCE_DIR}/include ${gmock_SOURCE_DIR})
 
+set(APP_CORE ${CMAKE_SOURCE_DIR}/cxx_elements/core_application)
+
+include_directories(${APP_CORE}/MasterNode/Watchdog)
+include_directories(${APP_CORE}/SlaveNode/Worker/WorkerBase)
+include_directories(${APP_CORE}/SlaveNode/Worker/Decryptor)
+
 set(MOCK test_mocked_headres)
 
 include_directories(${MOCK})
