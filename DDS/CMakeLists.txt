@@ -32,6 +32,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 if (ARM)
+    message(STATUS "ARCH: arm")
+
     set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/")
     set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
 
@@ -45,11 +47,17 @@ if (ARM)
 
     set (BOOST_ROOT "/home/jm/arm-linux-gnueabihf-pi/usr/")
     set (BOOST_LIBRARYDIR "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf")
-    find_package(Boost COMPONENTS mpi serialization chrono thread system REQUIRED) ## BOOST version can be specified as 2nd argument
+
+    include_directories("/home/jm/arm-linux-gnueabihf-pi/usr/include/")
+
+    find_package(Boost COMPONENTS mpi serialization chrono thread system REQUIRED)
     if(Boost_FOUND)
+        include_directories(${Boost_INCLUDE_DIRS})
+
         message(STATUS "ARM_BOOST Found!")
         message(STATUS "ARM_Boost version: ${Boost_VERSION}")
         message(STATUS "ARM_Boost include: ${Boost_INCLUDE_DIRS}")
+        message(STATUS "ARM_Boost libs: ${Boost_INCLUDE_DIRS}")
     endif()
 
     set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/openmpi/")
@@ -58,12 +66,12 @@ if (ARM)
 
     find_package(MPI REQUIRED)
     if(MPI_FOUND)
-        message(STATUS "ARM_MPI Found!")
-    endif()
+        include_directories(${MPI_INCLUDE_PATH})
 
-    include_directories("/home/jm/arm-linux-gnueabihf-pi/usr/include/")
-    include_directories(${MPI_INCLUDE_PATH})
-    include_directories(${Boost_INCLUDE_DIRS})
+        message(STATUS "ARM_MPI Found!")
+        message(STATUS "ARM_MPI include: ${MPI_INCLUDE_PATH}")
+        message(STATUS "ARM_MPI libs: ${MPI_LIBRARIES}")
+    endif()
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread ")
 
@@ -78,6 +86,7 @@ if (ARM)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,/mpi/DDS")
 
 else()
+    message(STATUS "ARCH: amd64")
 
     find_package(MPI REQUIRED)
     if(MPI_FOUND)
@@ -152,6 +161,7 @@ if (ARM)
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_thread.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_chrono.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_system.so
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_mpi.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libcrypto++.so.6
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libcryptopp.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so
