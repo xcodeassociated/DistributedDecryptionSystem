@@ -3,3 +3,7 @@
 //
 
 #include "Watchdog.hpp"
+
+Watchdog::Watchdog(){
+    ;
+}

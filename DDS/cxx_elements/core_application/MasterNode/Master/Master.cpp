@@ -4,6 +4,10 @@
 
 #include "Master.hpp"
 
+Master::Master() : logger{"Master"}, watchdog{} {
+    ;
+}
+
 bool Master::init() {
     return false;
 }

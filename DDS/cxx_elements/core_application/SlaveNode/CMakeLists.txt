@@ -1,6 +1,3 @@
-include_directories(Worker/WorkerBase)
-include_directories(Worker/Decryptor)
-
 add_subdirectory(Worker)
 
 set(SlaveNodeObjectSOURCES
@@ -9,4 +6,4 @@ set(SlaveNodeObjectSOURCES
 
 add_library(SlaveNodeObject SHARED ${SlaveNodeObjectSOURCES})
 
-target_link_libraries(SlaveNodeObject DecryptorLib)
+target_link_libraries(SlaveNodeObject LoggerLib DecryptorLib)

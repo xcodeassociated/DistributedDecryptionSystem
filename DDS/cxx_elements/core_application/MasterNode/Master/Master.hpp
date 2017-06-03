@@ -10,7 +10,11 @@
 #include <Watchdog.hpp>
 
 class Master {
+    Logger logger;
+    Watchdog watchdog;
+
 public:
+    Master();
     bool init(void);
 };
 

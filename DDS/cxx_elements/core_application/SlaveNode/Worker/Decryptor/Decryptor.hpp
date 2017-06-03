@@ -5,9 +5,12 @@
 #ifndef DDS_WORKERIMPLEMENTATION_HPP
 #define DDS_WORKERIMPLEMENTATION_HPP
 
+#include <WorkerBase.hpp>
 
-class WorkerImplementation {
-
+class Decryptor : public WorkerBase {
+public:
+    virtual bool init() override ;
+    Decryptor();
 };
 
 

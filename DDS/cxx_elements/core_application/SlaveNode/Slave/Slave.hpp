@@ -11,7 +11,12 @@
 #include <Decryptor.hpp>
 
 class Slave {
+    Logger logger;
+    Decryptor decryptor;
+
 public:
+    Slave();
+
     bool init(void);
 };
 

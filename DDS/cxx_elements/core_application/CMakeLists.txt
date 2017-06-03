@@ -1,2 +1,0 @@
-add_subdirectory(MasterNode)
-add_subdirectory(SlaveNode)

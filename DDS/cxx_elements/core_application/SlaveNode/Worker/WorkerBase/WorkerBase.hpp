@@ -7,7 +7,9 @@
 
 
 class WorkerBase {
-
+public:
+    virtual bool init() = 0;
+    virtual ~WorkerBase() = default;
 };
 
 

@@ -140,15 +140,20 @@ set(CXX cxx_elements)
 include_directories(${CXX}/common/Logger)
 include_directories(${CXX}/common/Message/MPI)
 include_directories(${CXX}/common/Message/Syscom)
+include_directories(${APP_CORE}/MasterNode/Watchdog)
 include_directories(${APP_CORE}/MasterNode/Master)
+include_directories(${APP_CORE}/SlaveNode/Worker/WorkerBase)
+include_directories(${APP_CORE}/SlaveNode/Worker/Decryptor)
 include_directories(${APP_CORE}/SlaveNode/Slave)
 include_directories(${CXX})
 
 set(MOCKS_DIR cxx_tests/test_mocked_headres)
-add_subdirectory(${CXX})
+add_subdirectory(${CXX}/common)
+add_subdirectory(${APP_CORE}/MasterNode)
+add_subdirectory(${APP_CORE}/SlaveNode)
 add_subdirectory(cxx_tests)
 
-set(SOURCE_FILES ${CXX}/main.cpp)
+set(SOURCE_FILES ${APP_CORE}/main.cpp)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 if (ARM)
@@ -194,6 +199,14 @@ if (CP)
                 COMMAND ${CMAKE_COMMAND} -E
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/MasterNode/libMasterNodeObject.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/libSlaveNodeObject.so ${CP})
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/libSlaveNodeObject.so ${CP}
+                COMMAND ${CMAKE_COMMAND} -E
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libLoggerLib.so ${CP}
+                COMMAND ${CMAKE_COMMAND} -E
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/MasterNode/libWatchdogLib.so ${CP}
+                COMMAND ${CMAKE_COMMAND} -E
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/Worker/libDecryptorLib.so ${CP}
+                )
+
     endif()
 endif()

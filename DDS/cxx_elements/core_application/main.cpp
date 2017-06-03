@@ -36,6 +36,9 @@
 #include <cryptopp/files.h>
 #endif
 
+#include <Master.hpp>
+#include <Slave.hpp>
+
 namespace mpi = boost::mpi;
 namespace po = boost::program_options;
 
@@ -514,6 +517,9 @@ int main(int argc, const char* argv[]) {
 
     mpi::environment env(mpi::threading::multiple, true);
     mpi::communicator world;
+
+    Master master;
+    Slave slave;
 
     if (world.rank() == 0) {
 

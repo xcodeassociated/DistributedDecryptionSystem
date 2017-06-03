@@ -4,6 +4,6 @@
 
 #include "Logger.hpp"
 
-Logger::Logger(){
+Logger::Logger(std::string _component_name) : component_name(_component_name) {
     ;
 }

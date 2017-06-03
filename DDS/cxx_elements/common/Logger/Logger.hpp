@@ -5,10 +5,14 @@
 #ifndef DDS_LOGGER_HPP
 #define DDS_LOGGER_HPP
 
+#include <string>
 
 class Logger {
+    std::string component_name;
+
 public:
-    Logger();
+    Logger() = delete;
+    Logger(std::string _component_name);
 };
 
 

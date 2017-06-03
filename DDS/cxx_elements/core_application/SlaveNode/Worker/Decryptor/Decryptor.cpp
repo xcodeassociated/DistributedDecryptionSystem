@@ -3,3 +3,11 @@
 //
 
 #include "Decryptor.hpp"
+
+Decryptor::Decryptor() {
+    ;
+}
+
+bool Decryptor::init() {
+    return false;
+}

@@ -1,5 +1,3 @@
-include_directories(Watchdog)
-
 set(WatchdogSOURCES
         Watchdog/Watchdog.hpp
         Watchdog/Watchdog.cpp)
@@ -12,4 +10,4 @@ set(MasterNodeObjectSOURCES
 
 add_library(MasterNodeObject SHARED ${MasterNodeObjectSOURCES})
 
-target_link_libraries(MasterNodeObject WatchdogLib)
+target_link_libraries(MasterNodeObject LoggerLib WatchdogLib)

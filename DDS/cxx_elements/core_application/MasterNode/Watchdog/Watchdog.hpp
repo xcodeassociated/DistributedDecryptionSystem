@@ -7,7 +7,8 @@
 
 
 class Watchdog {
-
+public:
+    Watchdog();
 };
 
 
