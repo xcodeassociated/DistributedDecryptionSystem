@@ -1,2 +1,0 @@
-add_subdirectory(core_application)
-add_subdirectory(common)

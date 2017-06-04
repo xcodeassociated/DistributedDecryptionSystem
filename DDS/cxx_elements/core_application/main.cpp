@@ -369,14 +369,14 @@ public:
                             os.flush();
                             os.close();
                         }else{
-                            boost::unique_lock<boost::mutex> lock(Worker::mu);
-                            std::cout << "[debug, Worker: " << this->id << "]: non except -> key: " << this->current_key << ", decrypted sha: " << decrypted_sha << " sha: " << sha1 << std::endl;
+//                            boost::unique_lock<boost::mutex> lock(Worker::mu);
+//                            std::cout << "[debug, Worker: " << this->id << "]: non except -> key: " << this->current_key << ", decrypted sha: " << decrypted_sha << " sha: " << sha1 << std::endl;
                         }
 
                     } catch (const CryptoPP::InvalidCiphertext& e) {
                         // ...
-                        boost::unique_lock<boost::mutex> lock(Worker::mu);
-                        std::cout << "[debug, Worker: " << this->id << "]: exception for key: " << this->current_key << std::endl;
+//                        boost::unique_lock<boost::mutex> lock(Worker::mu);
+//                        std::cout << "[debug, Worker: " << this->id << "]: exception for key: " << this->current_key << std::endl;
                     }
 
                     this->current_key += 1;
