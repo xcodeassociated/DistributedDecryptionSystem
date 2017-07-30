@@ -519,8 +519,11 @@ int main(int argc, const char* argv[]) {
     mpi::communicator world;
 
     Master master;
-    Slave slave;
+    master.init();
 
+    Slave slave;
+    slave.init();
+    return 0;
     if (world.rank() == 0) {
 
         std::cout << "[debug: " << world.rank() << "] Initial key range: [" << options.absolute_key_from << ", " << options.absolute_key_to << "]" << std::endl;

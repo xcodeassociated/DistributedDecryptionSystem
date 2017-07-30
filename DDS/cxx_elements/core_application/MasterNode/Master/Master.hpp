@@ -5,12 +5,14 @@
 #ifndef DDS_MASTERMAINCLASS_HPP
 #define DDS_MASTERMAINCLASS_HPP
 
+#include <memory>
+
 #include <MPIMessage.hpp>
 #include <Logger.hpp>
 #include <Watchdog.hpp>
 
 class Master {
-    Logger logger;
+    std::shared_ptr<Logger> logger;
     Watchdog watchdog;
 
 public:

@@ -4,10 +4,11 @@
 
 #include "Master.hpp"
 
-Master::Master() : logger{"Master"}, watchdog{} {
+Master::Master() : logger{Logger::instance("Master")}, watchdog{} {
     ;
 }
 
 bool Master::init() {
+    *logger << "init\n";
     return false;
 }

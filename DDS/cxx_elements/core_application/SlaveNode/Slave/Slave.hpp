@@ -11,7 +11,7 @@
 #include <Decryptor.hpp>
 
 class Slave {
-    Logger logger;
+    std::shared_ptr<Logger> logger;
     Decryptor decryptor;
 
 public:

@@ -4,11 +4,13 @@
 
 #include "Slave.hpp"
 
-Slave::Slave() : logger{"Slave"}, decryptor{} {
+Slave::Slave() : logger{Logger::instance("Slave")}, decryptor{} {
     ;
 }
 
 bool Slave::init() {
+    *logger << "init\n";
+
     this->decryptor.init();
     return false;
 }
