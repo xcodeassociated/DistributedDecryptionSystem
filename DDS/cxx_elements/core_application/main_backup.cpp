@@ -529,7 +529,6 @@ int main(int argc, const char* argv[]) {
         std::cout << "[debug: " << world.rank() << "] Initial key range: [" << options.absolute_key_from << ", " << options.absolute_key_to << "]" << std::endl;
 
         //calculate ranges for slaves
-        //TODO: has to calculate ranges for every slave thread!!!
         boost::container::vector<std::pair<uint64_t, uint64_t>> ranges =
                 boost::move(calculate_range(options.absolute_key_from, options.absolute_key_to, (world.size() - 1)));
 
@@ -548,18 +547,15 @@ int main(int argc, const char* argv[]) {
         //MPI message id - autoincrement
         boost::atomic_uint32_t mpi_message_id{0};
 
-        //up and running (working) slaves
-        boost::container::vector<int> working_node;
+        //?
+        boost::container::vector<int> ready_node;
 
-        //work map: slave -> {thread_range...}
-        boost::container::map<rank_type, boost::container::vector<std::pair<uint64_t, uint64_t>>> workmap;
+        boost::container::map<rank_type, boost::container::map<int, uint64_t>> nodemap; // node - workers (progress)
+        boost::container::map<rank_type, boost::container::vector<std::pair<uint64_t, uint64_t>>> nodeinfo;
 
-        //watchdog:
         boost::shared_mutex watchdog_mutex;
-        //  <message_id, <node, kick_number>>
-        boost::container::map<uint32_t, std::pair<rank_type, int>> watchdog_need_callback{};
+        boost::container::map<uint32_t, std::pair<rank_type, int>> watchdog_need_callback{}; // <message_id, <node, kick_number>>
 
-        //found key
         uint64_t match_found = 0;
 
         std::cout << "[debug: " << world.rank() << "] Thread pool: " << thread_pool << std::endl;
@@ -576,7 +572,7 @@ int main(int argc, const char* argv[]) {
 
                     if (isAlive) {
                         for (int i = 1; i < world.size(); i++) {
-                            if (std::find(working_node.begin(), working_node.end(), i) != working_node.end()) {
+                            if (std::find(ready_node.begin(), ready_node.end(), i) != ready_node.end()) {
                                 auto it = std::find_if(watchdog_need_callback.begin(), watchdog_need_callback.end(),
                                                        [&](const auto &e) {
                                                            return (e.second).first == i;
@@ -629,12 +625,12 @@ int main(int argc, const char* argv[]) {
                                             }
                                         }
 
-                                        auto it = std::find(working_node.begin(), working_node.end(), i);
-                                        assert(it != working_node.end());
+                                        auto it = std::find(ready_node.begin(), ready_node.end(), i);
+                                        assert(it != ready_node.end());
 
-                                        working_node.erase(std::remove(working_node.begin(), working_node.end(), i));
-                                        assert(std::find(working_node.begin(), working_node.end(), i) == working_node.end());
-                                        working_node.shrink_to_fit();
+                                        ready_node.erase(std::remove(ready_node.begin(), ready_node.end(), i));
+                                        assert(std::find(ready_node.begin(), ready_node.end(), i) == ready_node.end());
+                                        ready_node.shrink_to_fit();
 
                                         std::cout << "[debug: " << world.rank() << "] <<Wachdog: Dead Slave: " << i << " handeled." << std::endl;
                                     }
@@ -728,7 +724,7 @@ int main(int argc, const char* argv[]) {
                                         for (const auto& range : worker_ranges)
                                             std::cout << "[debug: " << world.rank() << "] \t[" << range.first << ", " << range.second << "]" << std::endl;
 
-                                        workmap[msg.sender] = boost::move(worker_ranges);
+                                        nodeinfo[msg.sender] = boost::move(worker_ranges);
 
                                         boost::container::map<int, uint64_t> temp{};
                                         for (int i = 0; i < workers; i++){
@@ -738,7 +734,7 @@ int main(int argc, const char* argv[]) {
                                         assert(static_cast<int>(temp.size()) == workers);
 
                                         nodemap[msg.sender] = boost::move(temp);
-                                        working_node.push_back(msg.sender);
+                                        ready_node.push_back(msg.sender);
 
                                     }break;
 
@@ -807,7 +803,7 @@ int main(int argc, const char* argv[]) {
                                 std::cout << "[info: " << world.rank() << "] ~~~ Master received KEY FOUND form Slave: " << msg.sender << ", key: " <<  match_found << " ~~~" << std::endl;
                                 std::cout << "[info: " << world.rank() << "] Master sends KILL message to all slaves" << std::endl;
 
-                                for (int slave : working_node)
+                                for (int slave : ready_node)
                                     send_queue.push({mpi_message_id++, slave, world.rank(), MpiMessage::Event::KILL, false, "kill"});
 
                             }break;
@@ -819,12 +815,12 @@ int main(int argc, const char* argv[]) {
 
                                 std::cout << "[info: " << world.rank() << "] Master setting slave: " << msg.sender << " offline"<< std::endl;
 
-                                working_node.erase(std::remove(working_node.begin(), working_node.end(), msg.sender));
-                                assert(std::find(working_node.begin(), working_node.end(), msg.sender) == working_node.end());
-                                working_node.shrink_to_fit();
+                                ready_node.erase(std::remove(ready_node.begin(), ready_node.end(), msg.sender));
+                                assert(std::find(ready_node.begin(), ready_node.end(), msg.sender) == ready_node.end());
+                                ready_node.shrink_to_fit();
 
-                                if (working_node.size() > 0)
-                                    std::cout << "[info: " << world.rank() << "] There are: " << working_node.size() << " slave nodes left" << std::endl;
+                                if (ready_node.size() > 0)
+                                    std::cout << "[info: " << world.rank() << "] There are: " << ready_node.size() << " slave nodes left" << std::endl;
                                 else {
                                     std::cout << "[info: " << world.rank() << "] There are no running slaves left - Master is going down..." << std::endl;
                                     isAlive = false;
