@@ -1,9 +1,10 @@
 add_subdirectory(Worker)
 
 set(SlaveNodeObjectSOURCES
-        Slave/Slave.hpp
-        Slave/Slave.cpp)
+        Slave/Slave.cpp
+        Slave/SlaveMessageGateway.cpp
+        Slave/SlaveSyscommGateway.cpp)
 
 add_library(SlaveNodeObject SHARED ${SlaveNodeObjectSOURCES})
 
-target_link_libraries(SlaveNodeObject LoggerLib DecryptorLib)
+target_link_libraries(SlaveNodeObject GatewayLib LoggerLib DecryptorLib)

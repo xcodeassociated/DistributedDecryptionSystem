@@ -9,9 +9,13 @@
 #include <SyscomMessage.hpp>
 #include <Logger.hpp>
 #include <Decryptor.hpp>
+#include "SlaveMessageGateway.hpp"
+#include "SlaveSyscommGateway.hpp"
 
 class Slave {
     std::shared_ptr<Logger> logger;
+    SlaveMessageGateway messageGateway;
+    SlaveSyscommGateway syscommGateway;
     Decryptor decryptor;
 
 public:

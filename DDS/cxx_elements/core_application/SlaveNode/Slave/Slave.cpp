@@ -4,7 +4,7 @@
 
 #include "Slave.hpp"
 
-Slave::Slave() : logger{Logger::instance("Slave")}, decryptor{} {
+Slave::Slave() : messageGateway{}, syscommGateway{}, logger{Logger::instance("Slave")}, decryptor{} {
     ;
 }
 
