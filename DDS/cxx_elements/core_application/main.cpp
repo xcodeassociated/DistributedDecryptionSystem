@@ -3,6 +3,7 @@
 #include <sstream>
 #include <utility>
 #include <fstream>
+#include <algorithm>
 
 #include <boost/container/vector.hpp>
 #include <boost/container/set.hpp>
@@ -463,7 +464,7 @@ std::string decrypt_file = "decrypted.txt";
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class Gateway {
-    constexpr static int max_operation_duration = 1000; //ms
+    constexpr static int max_operation_duration = 50; //ms
 
     static boost::optional<std::string> _send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
         std::string data{};
@@ -522,27 +523,34 @@ public:
 int main(int argc, const char* argv[]) {
     boost::shared_ptr<mpi::environment> env = boost::make_shared<mpi::environment>(mpi::threading::multiple, true);
     boost::shared_ptr<mpi::communicator> world = boost::make_shared<mpi::communicator>();
+    boost::container::vector<int> excluded{};
 
-    if (world->rank() == 0){
-        for (int i = 1; i < world->size(); i++) {
-            try {
-                boost::optional<std::string> response = Gateway::send_and_receive(world, i, 0, "hello");
-                if (response) {
-                    std::cout << "[" << world->rank() << "]: Master received: " << *response << std::endl;
-                } else {
-                    std::cerr << "[" << world->rank() << "]: Master did NOT received exception, but option is empty!" << std::endl;
+    while (true) {
+        if (world->rank() == 0) {
+            for (int i = 1; i < world->size(); i++) {
+                if (std::find(excluded.begin(), excluded.end(), i) != excluded.end())
+                    continue;
+
+                try {
+                    boost::optional<std::string> response = Gateway::send_and_receive(world, i, 0, "hello");
+                    if (response) {
+                        std::cout << "[" << world->rank() << "]: Master received: " << *response << std::endl;
+                    } else {
+                        std::cerr << "[" << world->rank() << "]: Master did NOT received exception, but option is empty!" << std::endl;
+                    }
+                } catch (const std::runtime_error &e) {
+                    std::cerr << "[" << world->rank() << "]: Master exception: " << e.what() << std::endl;
+                    excluded.push_back(i);
                 }
-            } catch (const std::runtime_error & e) {
-                std::cerr << "[" << world->rank() << "]: Master exception: " << e.what() << std::endl;
             }
+        } else {
+            std::string msg;
+            world->recv(0, 0, msg);
+            std::cout << "[" << world->rank() << "]: Slave received: " << msg << std::endl;
+            std::string response = std::to_string(world->rank());
+            world->send(0, 0, response);
         }
-    } else {
-        std::string msg;
-        world->recv(0, 0, msg);
-        std::cout << "[" << world->rank() << "]: Slave received: " << msg << std::endl;
-        std::string response = std::to_string(world->rank());
-        //boost::this_thread::sleep_for(boost::chrono::seconds(4));
-        world->send(0, 0, response);
+        boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
     }
 }
 
