@@ -473,7 +473,7 @@ class Gateway {
         std::size_t time_duration = 0;
 
         while (true) {
-            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+            boost::chrono::steady_clock::time_point begin = boost::chrono::steady_clock::now();
 
             if (reqs[0].test() && reqs[1].test())
                 return boost::optional<std::string>(data);
@@ -481,8 +481,8 @@ class Gateway {
             //sleep
             boost::this_thread::sleep_for(boost::chrono::nanoseconds(100)); //1000ns = 1ms
 
-            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            time_duration += std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+            boost::chrono::steady_clock::time_point end = boost::chrono::steady_clock::now();
+            time_duration += boost::chrono::duration_cast<boost::chrono::milliseconds>(end - begin).count();
 
             if (time_duration >= max_operation_duration)
                 break;
@@ -495,8 +495,8 @@ class Gateway {
 public:
 
     static boost::optional<std::string> send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
-        std::mutex m;
-        std::condition_variable cv;
+        boost::mutex m;
+        boost::condition_variable cv;
         boost::optional<std::string> ret;
 
         boost::thread t([&m, &cv, &ret, &world, &rank, &tag, &msg]() {
@@ -506,10 +506,10 @@ public:
         t.detach();
 
         {
-            std::unique_lock<std::mutex> l(m);
-            if (cv.wait_for(l, std::chrono::milliseconds(
+            boost::unique_lock<boost::mutex> l(m);
+            if (cv.wait_for(l, boost::chrono::milliseconds(
                     max_operation_duration + static_cast<std::size_t>(0.2 * max_operation_duration))) ==
-                std::cv_status::timeout)
+                boost::cv_status::timeout)
                 throw std::runtime_error("Timeout: " + rank);
         }
         return ret;
