@@ -4,6 +4,9 @@
 #include <utility>
 #include <fstream>
 #include <algorithm>
+#include <exception>
+#include <stdexcept>
+#include <fstream>
 
 #include <boost/container/vector.hpp>
 #include <boost/container/set.hpp>
@@ -463,95 +466,378 @@ std::string encrypted_file = "";
 std::string decrypt_file = "decrypted.txt";
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class Gateway {
-    constexpr static int max_operation_duration = 50; //ms
 
-    static boost::optional<std::string> _send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
-        std::string data{};
-        mpi::request reqs[2];
-        reqs[0] = world->isend(rank, tag, msg);
-        reqs[1] = world->irecv(rank, tag, data);
-        std::size_t time_duration = 0;
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <istream>
+#include <iostream>
+#include <ostream>
 
-        while (true) {
-            boost::chrono::steady_clock::time_point begin = boost::chrono::steady_clock::now();
+class icmp_header
+{
+public:
+    enum { echo_reply = 0, destination_unreachable = 3, source_quench = 4,
+        redirect = 5, echo_request = 8, time_exceeded = 11, parameter_problem = 12,
+        timestamp_request = 13, timestamp_reply = 14, info_request = 15,
+        info_reply = 16, address_request = 17, address_reply = 18 };
 
-            if (reqs[0].test() && reqs[1].test())
-                return boost::optional<std::string>(data);
+    icmp_header() { std::fill(rep_, rep_ + sizeof(rep_), 0); }
 
-            //sleep
-            boost::this_thread::sleep_for(boost::chrono::nanoseconds(100)); //1000ns = 1ms
+    unsigned char type() const { return rep_[0]; }
+    unsigned char code() const { return rep_[1]; }
+    unsigned short checksum() const { return decode(2, 3); }
+    unsigned short identifier() const { return decode(4, 5); }
+    unsigned short sequence_number() const { return decode(6, 7); }
 
-            boost::chrono::steady_clock::time_point end = boost::chrono::steady_clock::now();
-            time_duration += boost::chrono::duration_cast<boost::chrono::milliseconds>(end - begin).count();
+    void type(unsigned char n) { rep_[0] = n; }
+    void code(unsigned char n) { rep_[1] = n; }
+    void checksum(unsigned short n) { encode(2, 3, n); }
+    void identifier(unsigned short n) { encode(4, 5, n); }
+    void sequence_number(unsigned short n) { encode(6, 7, n); }
 
-            if (time_duration >= max_operation_duration)
-                break;
+    friend std::istream& operator>>(std::istream& is, icmp_header& header)
+    { return is.read(reinterpret_cast<char*>(header.rep_), 8); }
+
+    friend std::ostream& operator<<(std::ostream& os, const icmp_header& header)
+    { return os.write(reinterpret_cast<const char*>(header.rep_), 8); }
+
+private:
+    unsigned short decode(int a, int b) const
+    { return (rep_[a] << 8) + rep_[b]; }
+
+    void encode(int a, int b, unsigned short n)
+    {
+        rep_[a] = static_cast<unsigned char>(n >> 8);
+        rep_[b] = static_cast<unsigned char>(n & 0xFF);
+    }
+
+    unsigned char rep_[8];
+};
+
+template <typename Iterator>
+void compute_checksum(icmp_header& header,
+                      Iterator body_begin, Iterator body_end)
+{
+    unsigned int sum = (header.type() << 8) + header.code()
+                       + header.identifier() + header.sequence_number();
+
+    Iterator body_iter = body_begin;
+    while (body_iter != body_end)
+    {
+        sum += (static_cast<unsigned char>(*body_iter++) << 8);
+        if (body_iter != body_end)
+            sum += static_cast<unsigned char>(*body_iter++);
+    }
+
+    sum = (sum >> 16) + (sum & 0xFFFF);
+    sum += (sum >> 16);
+    header.checksum(static_cast<unsigned short>(~sum));
+}
+
+class ipv4_header
+{
+public:
+    ipv4_header() { std::fill(rep_, rep_ + sizeof(rep_), 0); }
+
+    unsigned char version() const { return (rep_[0] >> 4) & 0xF; }
+    unsigned short header_length() const { return (rep_[0] & 0xF) * 4; }
+    unsigned char type_of_service() const { return rep_[1]; }
+    unsigned short total_length() const { return decode(2, 3); }
+    unsigned short identification() const { return decode(4, 5); }
+    bool dont_fragment() const { return (rep_[6] & 0x40) != 0; }
+    bool more_fragments() const { return (rep_[6] & 0x20) != 0; }
+    unsigned short fragment_offset() const { return decode(6, 7) & 0x1FFF; }
+    unsigned int time_to_live() const { return rep_[8]; }
+    unsigned char protocol() const { return rep_[9]; }
+    unsigned short header_checksum() const { return decode(10, 11); }
+
+    boost::asio::ip::address_v4 source_address() const
+    {
+        boost::asio::ip::address_v4::bytes_type bytes
+                = { { rep_[12], rep_[13], rep_[14], rep_[15] } };
+        return boost::asio::ip::address_v4(bytes);
+    }
+
+    boost::asio::ip::address_v4 destination_address() const
+    {
+        boost::asio::ip::address_v4::bytes_type bytes
+                = { { rep_[16], rep_[17], rep_[18], rep_[19] } };
+        return boost::asio::ip::address_v4(bytes);
+    }
+
+    friend std::istream& operator>>(std::istream& is, ipv4_header& header)
+    {
+        is.read(reinterpret_cast<char*>(header.rep_), 20);
+        if (header.version() != 4)
+            is.setstate(std::ios::failbit);
+        std::streamsize options_length = header.header_length() - 20;
+        if (options_length < 0 || options_length > 40)
+            is.setstate(std::ios::failbit);
+        else
+            is.read(reinterpret_cast<char*>(header.rep_) + 20, options_length);
+        return is;
+    }
+
+private:
+    unsigned short decode(int a, int b) const
+    { return (rep_[a] << 8) + rep_[b]; }
+
+    unsigned char rep_[60];
+};
+
+using boost::asio::ip::icmp;
+using boost::asio::deadline_timer;
+namespace posix_time = boost::posix_time;
+
+class pinger
+{
+public:
+    pinger(boost::asio::io_service& io_service, const char* destination)
+            : resolver_(io_service), socket_(io_service, icmp::v4()),
+              timer_(io_service), sequence_number_(0), num_replies_(0)
+    {
+        icmp::resolver::query query(icmp::v4(), destination, "");
+        destination_ = *resolver_.resolve(query);
+
+        start_send();
+        start_receive();
+    }
+
+private:
+    void start_send()
+    {
+        std::string body("\"Hello!\" from Asio ping.");
+
+        // Create an ICMP header for an echo request.
+        icmp_header echo_request;
+        echo_request.type(icmp_header::echo_request);
+        echo_request.code(0);
+        echo_request.identifier(get_identifier());
+        echo_request.sequence_number(++sequence_number_);
+        compute_checksum(echo_request, body.begin(), body.end());
+
+        // Encode the request packet.
+        boost::asio::streambuf request_buffer;
+        std::ostream os(&request_buffer);
+        os << echo_request << body;
+
+        // Send the request.
+        time_sent_ = posix_time::microsec_clock::universal_time();
+        socket_.send_to(request_buffer.data(), destination_);
+
+        // Wait up to five seconds for a reply.
+        num_replies_ = 0;
+        timer_.expires_at(time_sent_ + posix_time::seconds(3));
+        timer_.async_wait(boost::bind(&pinger::handle_timeout, this));
+    }
+
+    void handle_timeout()
+    {
+        if (num_replies_ == 0)
+            throw std::runtime_error("Request timed out");
+
+        // Requests must be sent no less than one second apart.
+        timer_.expires_at(time_sent_ + posix_time::seconds(1));
+        timer_.async_wait(boost::bind(&pinger::start_send, this));
+    }
+
+    void start_receive()
+    {
+        // Discard any data already in the buffer.
+        reply_buffer_.consume(reply_buffer_.size());
+
+        // Wait for a reply. We prepare the buffer to receive up to 64KB.
+        socket_.async_receive(reply_buffer_.prepare(65536),
+                              boost::bind(&pinger::handle_receive, this, _2));
+    }
+
+    void handle_receive(std::size_t length)
+    {
+        // The actual number of bytes received is committed to the buffer so that we
+        // can extract it using a std::istream object.
+        reply_buffer_.commit(length);
+
+        // Decode the reply packet.
+        std::istream is(&reply_buffer_);
+        ipv4_header ipv4_hdr;
+        icmp_header icmp_hdr;
+        is >> ipv4_hdr >> icmp_hdr;
+
+        // We can receive all ICMP packets received by the host, so we need to
+        // filter out only the echo replies that match the our identifier and
+        // expected sequence number.
+        if (is && icmp_hdr.type() == icmp_header::echo_reply
+            && icmp_hdr.identifier() == get_identifier()
+            && icmp_hdr.sequence_number() == sequence_number_)
+        {
+            // If this is the first reply, interrupt the five second timeout.
+            if (num_replies_++ == 0)
+                timer_.cancel();
         }
 
-        return {};
+        start_receive();
+    }
+
+    static unsigned short get_identifier()
+    {
+#if defined(BOOST_WINDOWS)
+        return static_cast<unsigned short>(::GetCurrentProcessId());
+#else
+        return static_cast<unsigned short>(::getpid());
+#endif
+    }
+
+    icmp::resolver resolver_;
+    icmp::endpoint destination_;
+    icmp::socket socket_;
+    deadline_timer timer_;
+    unsigned short sequence_number_;
+    posix_time::ptime time_sent_;
+    boost::asio::streambuf reply_buffer_;
+    std::size_t num_replies_;
+};
+
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class Gateway {
+    constexpr static auto max_response_time = 2000u; //ms
+
+    static std::string _send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
+        std::string data = "";
+        mpi::request send_request = world->isend(rank, tag, msg);
+        send_request.wait();
+
+        while (true) {
+            boost::optional<mpi::status> stat = world->iprobe(rank, tag);
+            if (stat) {
+                mpi::request recv_request = world->irecv(stat->source(), stat->tag(), data);
+                recv_request.wait();
+                return data;
+            }
+        }
     }
 
 
 public:
 
-    static boost::optional<std::string> send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
-        boost::mutex m;
-        boost::condition_variable cv;
-        boost::optional<std::string> ret;
+    static void ping(const int rank){
+        //get rank ip address
+        std::ifstream hosts_file("hosts");
+        std::vector<std::string> hosts_ip;
+        std::copy(std::istream_iterator<std::string>(hosts_file),
+                  std::istream_iterator<std::string>(),
+                  std::back_inserter(hosts_ip));
 
-        boost::thread t([&m, &cv, &ret, &world, &rank, &tag, &msg]() {
-            ret = Gateway::_send_and_receive(world, rank, tag, msg);
-            cv.notify_one();
+        std::string ip;
+        try {
+            ip = hosts_ip[rank];
+        } catch (const std::out_of_range &) { // change std::out_of_range exception into my own exception class
+            throw std::runtime_error("Rank not present in hosts file");
+        } catch (...) {
+            throw std::runtime_error("Unknow exception");
+        }
+
+        //ping ip rank
+        boost::asio::io_service io_service;
+        pinger p(io_service, ip.c_str());
+        io_service.run_one(); // <--- blocking operation - will throw if timeout
+    }
+
+    static std::string send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
+        std::string ret = "";
+        std::mutex mut;
+        std::condition_variable cv;
+
+        std::thread t([world, &rank, &tag, &msg, &cv, &ret](){
+            try {
+                ping(rank);
+                ret = _send_and_receive(world, rank, tag, msg);
+                cv.notify_one();
+            } catch (const std::runtime_error& e) {
+                (void)std::current_exception();
+            }
         });
         t.detach();
 
         {
-            boost::unique_lock<boost::mutex> l(m);
-            if (cv.wait_for(l, boost::chrono::milliseconds(
-                    max_operation_duration + static_cast<std::size_t>(0.2 * max_operation_duration))) ==
-                boost::cv_status::timeout)
-                throw std::runtime_error("Timeout: " + rank);
+            std::unique_lock<std::mutex> l(mut);
+            if (cv.wait_for(l, std::chrono::milliseconds(max_response_time)) == std::cv_status::timeout)
+            {
+                std::string exception_message = "Timeout";
+                throw std::runtime_error(exception_message);
+            }
         }
+
         return ret;
     }
 
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+constexpr auto master_delay = 1000u;
+constexpr auto slave_probe_delay = 10u;
 
 int main(int argc, const char* argv[]) {
-    boost::shared_ptr<mpi::environment> env = boost::make_shared<mpi::environment>(mpi::threading::multiple, true);
+    boost::shared_ptr<mpi::environment> env = boost::make_shared<mpi::environment>(mpi::threading::single, true);
     boost::shared_ptr<mpi::communicator> world = boost::make_shared<mpi::communicator>();
     boost::container::vector<int> excluded{};
 
-    while (true) {
-        if (world->rank() == 0) {
+    if (world->rank() == 0) {
+        while (true) {
+            if (!world)
+                break;
+
             for (int i = 1; i < world->size(); i++) {
                 if (std::find(excluded.begin(), excluded.end(), i) != excluded.end())
                     continue;
 
+                boost::chrono::steady_clock::time_point begin = boost::chrono::steady_clock::now();
                 try {
-                    boost::optional<std::string> response = Gateway::send_and_receive(world, i, 0, "hello");
-                    if (response) {
-                        std::cout << "[" << world->rank() << "]: Master received: " << *response << std::endl;
+                    std::string response = Gateway::send_and_receive(world, i, 0, "hello");
+
+                    if (response != "") {
+                        std::cout << "[" << world->rank() << "]: Master received: " << response; //<< std::endl;
                     } else {
-                        std::cerr << "[" << world->rank() << "]: Master did NOT received exception, but option is empty!" << std::endl;
+                        std::cerr << "[" << world->rank()
+                                  << "]: Master did NOT received exception, but option is empty!"; // << std::endl;
                     }
                 } catch (const std::runtime_error &e) {
-                    std::cerr << "[" << world->rank() << "]: Master exception: " << e.what() << std::endl;
+                    std::cerr << "[" << world->rank() << "]: Master exception: " << e.what() << " - " << i << std::endl;
                     excluded.push_back(i);
                 }
+                boost::chrono::steady_clock::time_point end = boost::chrono::steady_clock::now();
+
+                std::cout << " @time: " << boost::chrono::duration_cast<boost::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
+
+                boost::this_thread::sleep_for(boost::chrono::milliseconds(master_delay));
             }
-        } else {
-            std::string msg;
-            world->recv(0, 0, msg);
-            std::cout << "[" << world->rank() << "]: Slave received: " << msg << std::endl;
-            std::string response = std::to_string(world->rank());
-            world->send(0, 0, response);
         }
-        boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
+    } else {
+        std::cout << "Hello form: " << world->rank() << std::endl; int i = 0;
+        while (true) {
+            if (!world)
+                break;
+
+            boost::optional<mpi::status> stat = world->iprobe(0, 0);
+            if (stat) {
+                std::string msg;
+                mpi::request req_rec = world->irecv(stat->source(), stat->tag(), msg);
+                req_rec.wait();
+
+                std::cout << "[" << world->rank() << "]: Slave received: " << msg << std::endl;
+
+                std::string response = std::to_string(world->rank());
+                mpi::request req_snd = world->isend(0, 0, response);
+                req_snd.wait();
+            }
+            boost::this_thread::sleep_for(boost::chrono::nanoseconds(slave_probe_delay));
+        }
     }
+
 }
 
 //int main(int argc, const char* argv[]) {
