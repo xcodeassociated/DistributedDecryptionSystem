@@ -18,6 +18,7 @@
 #include <boost/program_options.hpp>
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/atomic.hpp>
 #include <boost/mpi.hpp>
 #include <boost/serialization/string.hpp>
@@ -720,6 +721,33 @@ class Gateway {
         }
     }
 
+    static void _send(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
+        std::string data = "";
+        mpi::request send_request = world->isend(rank, tag, msg);
+        send_request.wait();
+    }
+
+    static boost::optional<std::string> _receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag){
+        std::string data = "";
+        boost::posix_time::ptime begin = boost::posix_time::microsec_clock::local_time();
+        while (true) {
+                boost::optional<mpi::status> stat = world->iprobe(rank, tag);
+                if (stat) {
+                    mpi::request recv_request = world->irecv(stat->source(), stat->tag(), data);
+                    recv_request.wait();
+                    return boost::optional<std::string>{data};
+                }
+            boost::posix_time::ptime end = boost::posix_time::microsec_clock::local_time();
+            boost::posix_time::time_duration duration = end - begin;
+
+            if (duration.total_microseconds() >= 1000000) {
+                std::cout << "break!\n";
+                break;
+            }
+            //boost::this_thread::sleep(boost::posix_time::milliseconds(1));
+        }
+        return {};
+    }
 
 public:
 
@@ -746,11 +774,21 @@ public:
         io_service.run_one(); // <--- blocking operation - will throw if timeout
     }
 
-    static std::string send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg) {
+    static void send(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
         ping(rank);
-        return _send_and_receive(world, rank, tag, msg);
+        _send(world, rank, tag, msg);
     }
 
+    static boost::optional<std::string> receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag) {
+        ping(rank);
+        return _receive(world, rank, tag);
+    }
+
+    static boost::optional<std::string> send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg) {
+        ping(rank);
+        _send(world, rank, tag, msg);
+        return _receive(world, rank, tag);
+    }
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -771,12 +809,13 @@ int main(int argc, const char* argv[]) {
                 if (std::find(excluded.begin(), excluded.end(), i) != excluded.end())
                     continue;
 
-                boost::chrono::steady_clock::time_point begin = boost::chrono::steady_clock::now();
+                boost::posix_time::ptime begin = boost::posix_time::microsec_clock::local_time();
                 try {
-                    std::string response = Gateway::send_and_receive(world, i, 0, "hello");
 
-                    if (response != "") {
-                        std::cout << "[" << world->rank() << "]: Master received: " << response; //<< std::endl;
+                    boost::optional<std::string> response = Gateway::send_and_receive(world, i, 0, "hello");
+
+                    if (response) {
+                        std::cout << "[" << world->rank() << "]: Master received: " << *response; //<< std::endl;
                     } else {
                         std::cerr << "[" << world->rank()
                                   << "]: Master did NOT received exception, but option is empty!"; // << std::endl;
@@ -785,11 +824,12 @@ int main(int argc, const char* argv[]) {
                     std::cerr << "[" << world->rank() << "]: Master exception: " << e.what() << " - " << i << std::endl;
                     excluded.push_back(i);
                 }
-                boost::chrono::steady_clock::time_point end = boost::chrono::steady_clock::now();
+                boost::posix_time::ptime end = boost::posix_time::microsec_clock::local_time();
+                boost::posix_time::time_duration duration = end - begin;
 
-                std::cout << " @time: " << boost::chrono::duration_cast<boost::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
+                std::cout << " @time: " << duration.total_milliseconds() << "ms" << std::endl;
 
-                boost::this_thread::sleep_for(boost::chrono::milliseconds(master_delay));
+                boost::this_thread::sleep(boost::posix_time::milliseconds(master_delay));
             }
         }
     } else {
@@ -810,7 +850,7 @@ int main(int argc, const char* argv[]) {
                 mpi::request req_snd = world->isend(0, 0, response);
                 req_snd.wait();
             }
-            boost::this_thread::sleep_for(boost::chrono::nanoseconds(slave_probe_delay));
+            boost::this_thread::sleep_for(boost::chrono::nanoseconds(10));
         }
     }
 
