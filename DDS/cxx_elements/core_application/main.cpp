@@ -706,45 +706,44 @@ private:
 
 class Gateway {
 
-    static std::string _send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
-        std::string data = "";
-        mpi::request send_request = world->isend(rank, tag, msg);
-        send_request.wait();
-
-        while (true) {
-            boost::optional<mpi::status> stat = world->iprobe(rank, tag);
-            if (stat) {
-                mpi::request recv_request = world->irecv(stat->source(), stat->tag(), data);
-                recv_request.wait();
-                return data;
-            }
-        }
-    }
-
     static void _send(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
-        std::string data = "";
+        boost::posix_time::ptime begin = boost::posix_time::microsec_clock::local_time();
         mpi::request send_request = world->isend(rank, tag, msg);
-        send_request.wait();
+        while (true){
+            if (send_request.test())
+                break;
+
+            boost::posix_time::ptime end = boost::posix_time::microsec_clock::local_time();
+            boost::posix_time::time_duration duration = end - begin;
+            if (duration.total_microseconds() >= 100000)  // wait 1.5s to send
+                throw std::runtime_error{"Send timeout"};
+        }
     }
 
     static boost::optional<std::string> _receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag){
         std::string data = "";
-        boost::posix_time::ptime begin = boost::posix_time::microsec_clock::local_time();
+        boost::posix_time::ptime begin_probe = boost::posix_time::microsec_clock::local_time();
         while (true) {
                 boost::optional<mpi::status> stat = world->iprobe(rank, tag);
                 if (stat) {
+                    boost::posix_time::ptime begin_receive = boost::posix_time::microsec_clock::local_time();
                     mpi::request recv_request = world->irecv(stat->source(), stat->tag(), data);
-                    recv_request.wait();
-                    return boost::optional<std::string>{data};
-                }
-            boost::posix_time::ptime end = boost::posix_time::microsec_clock::local_time();
-            boost::posix_time::time_duration duration = end - begin;
+                    while (true) {
+                        if (recv_request.test())
+                            return boost::optional<std::string>{data};
 
-            if (duration.total_microseconds() >= 1000000) {
-                std::cout << "break!\n";
+                        boost::posix_time::ptime end_receive = boost::posix_time::microsec_clock::local_time();
+                        boost::posix_time::time_duration duration_receive = end_receive - begin_receive;
+                        if (duration_receive.total_microseconds() >= 100000)  // wait 1.5s to receive message
+                            throw std::runtime_error{"Receive timeout"};
+
+                    }
+                }
+            boost::posix_time::ptime end_probe = boost::posix_time::microsec_clock::local_time();
+            boost::posix_time::time_duration duration_probe = end_probe - begin_probe;
+
+            if (duration_probe.total_microseconds() >= 1000000)  // wait 1s to probe message
                 break;
-            }
-            //boost::this_thread::sleep(boost::posix_time::milliseconds(1));
         }
         return {};
     }
@@ -768,10 +767,9 @@ public:
             throw std::runtime_error("Unknow exception");
         }
 
-        //ping ip rank
         boost::asio::io_service io_service;
         pinger p(io_service, ip.c_str());
-        io_service.run_one(); // <--- blocking operation - will throw if timeout
+        io_service.run_one(); // <--- blocking operation - will throw if 3s timeout reached
     }
 
     static void send(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
@@ -789,11 +787,19 @@ public:
         _send(world, rank, tag, msg);
         return _receive(world, rank, tag);
     }
+
+    static void unsafe_send(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
+        _send(world, rank, tag, msg);
+    }
+
+    static boost::optional<std::string> unsafe_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag) {
+        return _receive(world, rank, tag);
+    }
+
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-constexpr auto master_delay = 100u;
-constexpr auto slave_probe_delay = 10u;
+constexpr auto master_delay = 10u;
 
 int main(int argc, const char* argv[]) {
     boost::shared_ptr<mpi::environment> env = boost::make_shared<mpi::environment>(mpi::threading::single, true);
@@ -833,24 +839,20 @@ int main(int argc, const char* argv[]) {
             }
         }
     } else {
-        std::cout << "Hello form: " << world->rank() << std::endl; int i = 0;
         while (true) {
             if (!world)
                 break;
 
-            boost::optional<mpi::status> stat = world->iprobe(0, 0);
-            if (stat) {
-                std::string msg;
-                mpi::request req_rec = world->irecv(stat->source(), stat->tag(), msg);
-                req_rec.wait();
-
-                std::cout << "[" << world->rank() << "]: Slave received: " << msg << std::endl;
-
-                std::string response = std::to_string(world->rank());
-                mpi::request req_snd = world->isend(0, 0, response);
-                req_snd.wait();
+            try {
+                boost::optional<std::string> message = Gateway::unsafe_receive(world, 0, 0);
+                if (message) {
+                    Gateway::unsafe_send(world, 0, 0, std::to_string(world->rank()));
+                } else {
+                    std::cerr << "[" << world->rank() << "]: " << " Slave received EMPTY message!" << std::endl;
+                }
+            } catch (const std::runtime_error& e) {
+                std::cerr << "[" << world->rank() << "]: " << " Slave received exception: " << e.what() << std::endl;
             }
-            boost::this_thread::sleep_for(boost::chrono::nanoseconds(10));
         }
     }
 
