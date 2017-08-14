@@ -704,7 +704,6 @@ private:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class Gateway {
-    constexpr static auto max_response_time = 2000u; //ms
 
     static std::string _send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
         std::string data = "";
@@ -747,38 +746,15 @@ public:
         io_service.run_one(); // <--- blocking operation - will throw if timeout
     }
 
-    static std::string send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg){
-        std::string ret = "";
-        std::mutex mut;
-        std::condition_variable cv;
-
-        std::thread t([world, &rank, &tag, &msg, &cv, &ret](){
-            try {
-                ping(rank);
-                ret = _send_and_receive(world, rank, tag, msg);
-                cv.notify_one();
-            } catch (const std::runtime_error& e) {
-                (void)std::current_exception();
-            }
-        });
-        t.detach();
-
-        {
-            std::unique_lock<std::mutex> l(mut);
-            if (cv.wait_for(l, std::chrono::milliseconds(max_response_time)) == std::cv_status::timeout)
-            {
-                std::string exception_message = "Timeout";
-                throw std::runtime_error(exception_message);
-            }
-        }
-
-        return ret;
+    static std::string send_and_receive(boost::shared_ptr<mpi::communicator> world, const int rank, const int tag, const std::string &msg) {
+        ping(rank);
+        return _send_and_receive(world, rank, tag, msg);
     }
 
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-constexpr auto master_delay = 1000u;
+constexpr auto master_delay = 100u;
 constexpr auto slave_probe_delay = 10u;
 
 int main(int argc, const char* argv[]) {
