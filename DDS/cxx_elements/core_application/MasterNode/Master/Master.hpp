@@ -7,15 +7,14 @@
 
 #include <memory>
 
-#include <MPIMessage.hpp>
+#include <common/Message/MPIMessage.hpp>
 #include <Logger.hpp>
-#include <Watchdog.hpp>
+
 #include "MasterMessageGateway.hpp"
 
 class Master {
     std::shared_ptr<Logger> logger;
     MasterMessageGateway messageGateway;
-    Watchdog watchdog;
 
 public:
     Master();

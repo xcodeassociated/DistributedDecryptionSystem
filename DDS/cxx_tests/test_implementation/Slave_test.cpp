@@ -56,10 +56,3 @@ TEST_F(Slave_test, Slave_test_foo2_test3){
     EXPECT_EQ(model.foo2(10), 0);
     //EXPECT_EQ(model.foo2(0), 0); //<- gtest error: expected to be called once
 }
-
-TEST_F(Slave_test, Slave_test_foo3_test0){
-    EXPECT_CALL(model, foo3(testing::Matcher<int>(testing::_), testing::Matcher<int>(testing::_)))
-            .WillOnce(testing::Return(100));
-    
-    EXPECT_EQ(model.foo3(0, 1), 100);
-}

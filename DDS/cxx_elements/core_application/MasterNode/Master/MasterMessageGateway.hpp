@@ -5,7 +5,7 @@
 #ifndef DDS_MASTERMESSAGEGATEWAY_HPP
 #define DDS_MASTERMESSAGEGATEWAY_HPP
 
-#include <GatewayBase.hpp>
+#include <common/MessageGateway/GatewayBase.hpp>
 
 class MasterMessageGateway : public GatewayBase {
 

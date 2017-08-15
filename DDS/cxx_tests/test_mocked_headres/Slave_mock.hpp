@@ -27,8 +27,6 @@ namespace mock {
         MOCK_METHOD0(foo, bool());
         MOCK_METHOD0(fooint, int());
         MOCK_METHOD1(foo2, int(int x));
-        
-        MOCK_METHOD2(foo3, int(int x, int y));
     };
     
 }

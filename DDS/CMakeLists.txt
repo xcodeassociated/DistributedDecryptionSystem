@@ -97,7 +97,7 @@ else()
         message(STATUS "MPI libs: ${MPI_LIBRARIES}")
     endif()
 
-    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system REQUIRED)
+    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system filesystem REQUIRED)
     if(Boost_FOUND)
         include_directories(${Boost_INCLUDE_DIRS})
 
@@ -138,8 +138,9 @@ set(APP_CORE cxx_elements/core_application)
 set(CXX cxx_elements)
 
 include_directories(${CXX}/common/Logger)
-include_directories(${CXX}/common/Message/MPI)
-include_directories(${CXX}/common/Message/Syscom)
+include_directories(${CXX}/common/Message)
+include_directories(${CXX}/common/MessageGateway)
+include_directories(${CXX}/common/Ping)
 include_directories(${APP_CORE}/MasterNode/Watchdog)
 include_directories(${APP_CORE}/MasterNode/Master)
 include_directories(${APP_CORE}/SlaveNode/Worker/WorkerBase)
@@ -167,6 +168,7 @@ if (ARM)
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_chrono.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_system.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_mpi.so
+            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_filesystem.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libcrypto++.so.6
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libcryptopp.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so

@@ -4,7 +4,7 @@
 
 #include "Master.hpp"
 
-Master::Master() : messageGateway{}, logger{Logger::instance("Master")}, watchdog{} {
+Master::Master() : messageGateway{}, logger{Logger::instance("Master")} {
     ;
 }
 

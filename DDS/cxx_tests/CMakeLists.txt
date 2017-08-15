@@ -27,6 +27,8 @@ add_executable(${PROJECT_NAME}
         ${TEST_SOURCES})
 
 target_link_libraries(${PROJECT_NAME}
+        MasterNodeObject
+        SlaveNodeObject
         gtest
         gtest_main
         gmock

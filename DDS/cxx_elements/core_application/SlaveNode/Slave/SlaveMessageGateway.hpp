@@ -5,7 +5,7 @@
 #ifndef DDS_SLAVEMESSAGEGATEWAY_HPP
 #define DDS_SLAVEMESSAGEGATEWAY_HPP
 
-#include <GatewayBase.hpp>
+#include <common/MessageGateway/GatewayBase.hpp>
 
 class SlaveMessageGateway : public GatewayBase {
 
