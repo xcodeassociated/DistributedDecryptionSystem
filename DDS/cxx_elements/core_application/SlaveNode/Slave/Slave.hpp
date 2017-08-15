@@ -25,7 +25,7 @@ public:
 };
 
 class Slave {
-    std::shared_ptr<Logger> logger;
+    boost::shared_ptr<Logger> logger;
     boost::shared_ptr<mpi::communicator> world = nullptr;
     SlaveGateway messageGateway;
     boost::container::vector<boost::shared_ptr<boost::thread>> thread_array;

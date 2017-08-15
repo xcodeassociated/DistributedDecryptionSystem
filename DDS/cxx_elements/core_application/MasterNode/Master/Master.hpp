@@ -26,7 +26,7 @@ public:
 };
 
 class Master {
-    std::shared_ptr<Logger> logger;
+    boost::shared_ptr<Logger> logger;
     boost::shared_ptr<mpi::communicator> world = nullptr;
     MasterGateway messageGateway;
 

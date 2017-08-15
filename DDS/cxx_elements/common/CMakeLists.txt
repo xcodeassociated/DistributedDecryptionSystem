@@ -1,6 +1,7 @@
 set(LoggerLibSOURCES
         Logger/Logger.cpp)
 add_library(LoggerLib SHARED ${LoggerLibSOURCES})
+target_link_libraries(LoggerLib ${Boost_LIBRARIES})
 
 set(PingSOURCES
         Ping/ping.cpp)

@@ -7,33 +7,36 @@
 
 #include <string>
 #include <iostream>
-#include <mutex>
-#include <memory>
+//#include <mutex>
+//#include <memory>
+#include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 
 class Logger;
 
 class LoggerFactory{
-    static std::mutex logger_sync;
+    static boost::mutex logger_sync;
 public:
-    static std::shared_ptr<Logger> create_logger(const std::string);
+    static boost::shared_ptr<Logger> create_logger(const std::string);
 };
 
 class Logger{
     friend class LoggerFactory;
 
     std::string component_name;
-    std::mutex& mu;
+    boost::mutex& mu;
 
-    Logger(std::mutex& mutex_ref, const std::string _component_name);
+    Logger(boost::mutex& mutex_ref, const std::string _component_name);
 
 public:
     virtual ~Logger() = default;
 
-    static std::shared_ptr<Logger> instance(const std::string component_name);
+    static boost::shared_ptr<Logger> instance(const std::string component_name);
 
     template <typename T>
     Logger& operator<<(const T& t){
-        //std::lock_guard<std::mutex> lock(this->mu);
+        boost::lock_guard<boost::mutex> lock(this->mu);
         std::cout << this->component_name << ": " << t;
         return *this;
     }
