@@ -2,8 +2,11 @@
 // Created by Janusz Majchrzak on 30/05/17.
 //
 
-#include "Logger.hpp"
 #include <boost/make_shared.hpp>
+#include <boost/chrono.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
+#include "Logger.hpp"
 
 boost::mutex LoggerFactory::logger_sync;
 
@@ -13,6 +16,11 @@ Logger::Logger(boost::mutex& mutex_ref, const std::string _component_name) :
 
 boost::shared_ptr<Logger> Logger::instance(const std::string component_name){
     return LoggerFactory::create_logger(component_name);
+}
+
+std::string Logger::getTimestamp() {
+    boost::posix_time::ptime posix_time = boost::posix_time::microsec_clock::local_time();
+    return boost::posix_time::to_simple_string(posix_time);
 }
 
 boost::shared_ptr<Logger> LoggerFactory::create_logger(const std::string component_name){

@@ -27,6 +27,8 @@ class Logger{
 
     Logger(boost::mutex& mutex_ref, const std::string _component_name);
 
+    std::string getTimestamp();
+
 public:
     virtual ~Logger() = default;
 
@@ -35,7 +37,7 @@ public:
     template <typename T>
     Logger& operator<<(const T& t){
         boost::lock_guard<boost::mutex> lock(this->mu);
-        std::cout << this->component_name << ": " << t;
+        std::cout << '[' << this->getTimestamp() << "] " << this->component_name << ": " << t;
         return *this;
     }
 
