@@ -22,6 +22,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 message (STATUS "Build DIR: ${CMAKE_CURRENT_BINARY_DIR}")
@@ -50,7 +51,7 @@ if (ARM)
 
     include_directories("/home/jm/arm-linux-gnueabihf-pi/usr/include/")
 
-    find_package(Boost COMPONENTS mpi serialization chrono thread system REQUIRED)
+    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system filesystem REQUIRED)
     if(Boost_FOUND)
         include_directories(${Boost_INCLUDE_DIRS})
 
@@ -161,21 +162,12 @@ if (ARM)
     target_link_libraries(
             ${PROJECT_NAME}
             ${MPI_LIBRARIES}
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_mpi.so
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_serialization.so
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_program_options.so
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_thread.so
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_chrono.so
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_system.so
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_mpi.so
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libboost_filesystem.so
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libcrypto++.so.6
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libcryptopp.so
+            ${Boost_LIBRARIES}
+            ${CRYPTOPP_LIBRARY}
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so.5
             /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libudev.so.1
             /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libpthread.so.0
-            LoggerLib
             MasterNodeObject
             SlaveNodeObject)
 else()
@@ -184,10 +176,9 @@ else()
             ${MPI_LIBRARIES}
             ${Boost_LIBRARIES}
             ${CRYPTOPP_LIBRARY}
-            pthread
-            LoggerLib
             MasterNodeObject
-            SlaveNodeObject)
+            SlaveNodeObject
+            pthread)
 endif()
 
 ## post build steps
@@ -204,6 +195,10 @@ if (CP)
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/libSlaveNodeObject.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libLoggerLib.so ${CP}
+                COMMAND ${CMAKE_COMMAND} -E
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libGatewayLib.so ${CP}
+                COMMAND ${CMAKE_COMMAND} -E
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libPingLib.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/Worker/libDecryptorLib.so ${CP}
                 )

@@ -11,4 +11,4 @@ target_link_libraries(PingLib ${Boost_LIBRARIES})
 set(GatewaySOURCES
         MessageGateway/Gateway.cpp)
 add_library(GatewayLib SHARED ${GatewaySOURCES})
-target_link_libraries(GatewayLib PingLib)
+target_link_libraries(GatewayLib PingLib ${Boost_LIBRARIES})
