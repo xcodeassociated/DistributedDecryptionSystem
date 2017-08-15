@@ -73,14 +73,18 @@ int main(int argc, const char* argv[]) {
             std::cout << "Decrypt file path not set... Using default: " << decrypted_file << std::endl;
         }
 
-
         Master master(world);
         master.init(range_begine, range_end);
+        master.collect_slave_info();
+        master.prepare_slaves();
+        master.start();
 
     } else {
 
         Slave slave(world);
         slave.init();
+        slave.start();
+
     }
 
     return EXIT_SUCCESS;

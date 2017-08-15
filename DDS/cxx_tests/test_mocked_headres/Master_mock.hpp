@@ -14,8 +14,10 @@
 
 namespace mock {
     class Master_mock : public Master {
+        using Master::Master;
+
     public:
-        Master_mock() {
+        Master_mock() : Master(nullptr) {
             ON_CALL(*this, foo()).
                     WillByDefault(testing::Return(true));
             

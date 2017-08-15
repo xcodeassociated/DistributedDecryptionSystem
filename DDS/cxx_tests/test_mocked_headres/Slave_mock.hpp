@@ -14,8 +14,9 @@
 
 namespace mock {
     class Slave_mock : public Slave {
+        using Slave::Slave;
     public:
-        Slave_mock() {
+        Slave_mock() : Slave(nullptr) {
             ON_CALL(*this, foo()).
                     WillByDefault(testing::Return(true));
             
