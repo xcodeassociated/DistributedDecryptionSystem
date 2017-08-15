@@ -412,17 +412,6 @@ auto calculate_range = [](uint64_t absolute_key_from, uint64_t absolute_key_to, 
     return ranges;
 };
 
-
-auto constexpr receive_thread_loop_delay    = 100000u;         /* ns -> 0.1ms */
-auto constexpr process_message_loop_delay   = 10000000u;       /* ns  -> 10ms */
-
-struct Options{
-    uint64_t absolute_key_from   = 0;
-    uint64_t absolute_key_to     = 0;
-};
-
-bool isAlive = true;
-
 std::string encrypted_file = "";
 std::string decrypt_file = "decrypted.txt";
 
@@ -531,6 +520,54 @@ public:
 constexpr auto master_delay = 10u;
 
 int main(int argc, const char* argv[]) {
+    std::cout << std::boolalpha;
+    std::cout.sync_with_stdio(true);
+
+    po::options_description desc("DDS Options");
+    desc.add_options()
+            ("help", "produce help MpiMessage")
+            ("from", po::value<uint64_t>(), "set key range BEGIN value")
+            ("to", po::value<uint64_t>(), "set key range END value")
+            ("encrypted", po::value<std::string>(), "encrypted file path")
+            ("decrypt", po::value<std::string>(), "decrypted file path")
+            ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+
+    if (vm.count("help")) {
+        std::cout << desc << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    if (vm.count("from"))
+        (void)vm["from"].as<uint64_t>();
+    else {
+        std::cerr << "Set min range!" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    if (vm.count("to"))
+        (void)vm["to"].as<uint64_t>();
+    else {
+        std::cerr << "Set max range!" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    if (vm.count("encrypted")) {
+        ::encrypted_file = vm["encrypted"].as<std::string>();
+    } else {
+        std::cerr << "Encrypted file path missing!" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    if (vm.count("decrypt")) {
+        ::decrypt_file = vm["decrypt"].as<std::string>();
+    } else {
+        std::cout << "Decrypt file path not set... Using default: " << ::decrypt_file << std::endl;
+    }
+
     boost::shared_ptr<mpi::environment> env = boost::make_shared<mpi::environment>(mpi::threading::single, true);
     boost::shared_ptr<mpi::communicator> world = boost::make_shared<mpi::communicator>();
     boost::container::vector<int> excluded{};
@@ -584,126 +621,6 @@ int main(int argc, const char* argv[]) {
             }
         }
     }
-}
 
-//int main(int argc, const char* argv[]) {
-//    std::cout << std::boolalpha;
-//    std::cout.sync_with_stdio(true);
-//
-//    Options options;
-//
-//    po::options_description desc("DDS Options");
-//    desc.add_options()
-//            ("help", "produce help MpiMessage")
-//            ("from", po::value<uint64_t>(), "set key range BEGIN value")
-//            ("to", po::value<uint64_t>(), "set key range END value")
-//            ("encrypted", po::value<std::string>(), "encrypted file path")
-//            ("decrypt", po::value<std::string>(), "decrypted file path")
-//            ;
-//
-//    po::variables_map vm;
-//    po::store(po::parse_command_line(argc, argv, desc), vm);
-//    po::notify(vm);
-//
-//    if (vm.count("help")) {
-//        std::cout << desc << std::endl;
-//        return 1;
-//    }
-//
-//    if (vm.count("from"))
-//        options.absolute_key_from = vm["from"].as<uint64_t>();
-//    else {
-//        std::cerr << "Set min range!" << std::endl;
-//        return 1;
-//    }
-//
-//    if (vm.count("to"))
-//        options.absolute_key_to = vm["to"].as<uint64_t>();
-//    else {
-//        std::cerr << "Set max range!" << std::endl;
-//        return 1;
-//    }
-//
-//    if (vm.count("encrypted")) {
-//        ::encrypted_file = vm["encrypted"].as<std::string>();
-//    } else {
-//        std::cerr << "Encrypted file path missing!" << std::endl;
-//        return 1;
-//    }
-//
-//    if (vm.count("decrypt")) {
-//        ::decrypt_file = vm["decrypt"].as<std::string>();
-//    } else {
-//        std::cout << "Decrypt file path not set... Using default: " << ::decrypt_file << std::endl;
-//    }
-//
-//    assert(options.absolute_key_from >= 0 && options.absolute_key_to > 0);
-//    assert(options.absolute_key_from < options.absolute_key_to);
-//
-//    mpi::environment env(mpi::threading::multiple, true);
-//    mpi::communicator world;
-//
-//    Master master;
-//    master.init();
-//
-//    Slave slave;
-//    slave.init();
-//
-//    if (world.rank() == 0) {
-//        auto thread_pool = boost::thread::hardware_concurrency();
-//        auto used_threads = 2; // MPI_thread, Process_thread
-//
-//        //MPI message id - autoincrement
-//        boost::atomic_uint32_t mpi_message_id{0};
-//
-//        //up and running (working) slaves
-//        boost::container::vector<int> working_node;
-//
-//        //work map: slave -> {thread_range...}
-//        boost::container::map<rank_type, boost::container::vector<std::pair<uint64_t, uint64_t>>> workmap;
-//
-//        //watchdog:
-//        boost::shared_mutex watchdog_mutex;
-//        //  <message_id, <node, kick_number>>
-//        boost::container::map<uint32_t, std::pair<rank_type, int>> watchdog_need_callback{};
-//
-//        //found key
-//        uint64_t match_found = 0;
-//
-//    } else {
-//        auto thread_pool = boost::thread::hardware_concurrency();
-//        auto used_threads = 2; // MPI_thread, Process_thread
-//
-//        uint32_t mpi_message_id = 0;
-//
-//        auto avaiable_threads = thread_pool - used_threads;
-//
-//        boost::container::vector<boost::shared_ptr<boost::thread>> thread_array{};
-//
-//        boost::container::vector<boost::shared_ptr<Worker>> worker_pointers{};
-//
-//        boost::container::vector<std::pair<int, bool>> worker_running{};
-//
-//        boost::container::vector<std::pair<uint64_t, uint64_t>> worker_ranges{};
-//
-//        bool isInit = false;
-//
-//
-//        auto init_worker_threads = [&]{
-//            for (int i = 0; i < avaiable_threads; i++){
-//
-//                auto thread_task = [i, &worker_pointers, &worker_ranges]{
-//                    boost::shared_ptr<Worker> worker_ptr = boost::make_shared<Worker>(i, Worker::KeyRange{worker_ranges[i].first, worker_ranges[i].second}, ::encrypted_file, ::decrypt_file);
-//                    worker_pointers.push_back(worker_ptr);
-//                    worker_ptr->start();
-//                };
-//                boost::shared_ptr<boost::thread> worker_thread_ptr = boost::make_shared<boost::thread>(thread_task);
-//                thread_array.push_back(worker_thread_ptr);
-//
-//                worker_running.emplace_back(i, true);
-//            }
-//        };
-//    }
-//
-//    return EXIT_SUCCESS;
-//}
+    return EXIT_SUCCESS;
+}
