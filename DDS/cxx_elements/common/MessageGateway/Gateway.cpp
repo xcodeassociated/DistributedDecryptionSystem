@@ -16,11 +16,15 @@
 #include "Gateway.hpp"
 
 
-Gateway::Gateway(boost::shared_ptr<mpi::communicator> _world) : world{_world} {
+int Gateway::timeout = 100000;
+
+Gateway::Gateway(boost::shared_ptr<mpi::communicator> _world, const std::string& _hosts_file_name) :
+        world{_world},
+        hosts_file_name{_hosts_file_name} {
     ;
 }
 
-void Gateway::_send(const int rank, const int tag, const std::string &msg){
+void Gateway::_send(const int rank, const int tag, const MpiMessage &msg){
     boost::posix_time::ptime begin = boost::posix_time::microsec_clock::local_time();
     mpi::request send_request = world->isend(rank, tag, msg);
     while (true){
@@ -29,13 +33,13 @@ void Gateway::_send(const int rank, const int tag, const std::string &msg){
 
         boost::posix_time::ptime end = boost::posix_time::microsec_clock::local_time();
         boost::posix_time::time_duration duration = end - begin;
-        if (duration.total_microseconds() >= 100000)  // wait 1.5s to send
-            throw std::runtime_error{"Send timeout"};
+        if (duration.total_microseconds() >= timeout)
+            throw GatewaySendException{"Send timeout"};
     }
 }
 
-boost::optional<std::string> Gateway::_receive(const int rank, const int tag){
-    std::string data = "";
+boost::optional<MpiMessage> Gateway::_receive(const int rank, const int tag){
+    MpiMessage data;
     boost::posix_time::ptime begin_probe = boost::posix_time::microsec_clock::local_time();
     while (true) {
         boost::optional<mpi::status> stat = world->iprobe(rank, tag);
@@ -44,19 +48,19 @@ boost::optional<std::string> Gateway::_receive(const int rank, const int tag){
             mpi::request recv_request = world->irecv(stat->source(), stat->tag(), data);
             while (true) {
                 if (recv_request.test())
-                    return boost::optional<std::string>{data};
+                    return boost::optional<MpiMessage>{data};
 
                 boost::posix_time::ptime end_receive = boost::posix_time::microsec_clock::local_time();
                 boost::posix_time::time_duration duration_receive = end_receive - begin_receive;
-                if (duration_receive.total_microseconds() >= 100000)  // wait 1.5s to receive message
-                    throw std::runtime_error{"Receive timeout"};
+                if (duration_receive.total_microseconds() >= timeout)
+                    throw GatewayReceiveException{"Receive timeout"};
 
             }
         }
         boost::posix_time::ptime end_probe = boost::posix_time::microsec_clock::local_time();
         boost::posix_time::time_duration duration_probe = end_probe - begin_probe;
 
-        if (duration_probe.total_microseconds() >= 1000000)  // wait 1s to probe message
+        if (duration_probe.total_microseconds() >= timeout)
             break;
     }
     return {};
@@ -66,7 +70,7 @@ void Gateway::ping(const int rank){
     const std::string hosts_file_name = "hosts";
 
     if (!boost::filesystem::exists(hosts_file_name))
-        throw std::runtime_error{"Hosts file not found"};
+        throw GatewayIncorrectRankException{"Hosts file not found"};
 
     std::ifstream hosts_file(hosts_file_name, std::ios::binary);
     std::vector<std::string> hosts_ip;
@@ -77,37 +81,39 @@ void Gateway::ping(const int rank){
     std::string ip;
     try {
         ip = hosts_ip[rank];
-    } catch (const std::out_of_range &) { // change std::out_of_range exception into my own exception class
-        throw std::runtime_error("Rank not present in hosts file");
-    } catch (...) {
-        throw std::runtime_error("Unknow exception");
+    } catch (const std::out_of_range &) {
+        throw GatewayIncorrectRankException{"Rank not present in hosts file"};
     }
 
     boost::asio::io_service io_service;
     pinger p(io_service, ip.c_str());
-    io_service.run_one(); // <--- blocking operation - will throw if 3s timeout reached
+    try {
+        io_service.run_one();
+    } catch (const std::runtime_error& e) {
+        throw GatewayPingException{e.what()};
+    }
 }
 
-void Gateway::send(const int rank, const int tag, const std::string &msg){
+void Gateway::send(const int rank, const int tag, const MpiMessage &msg){
     ping(rank);
     _send(rank, tag, msg);
 }
 
-boost::optional<std::string> Gateway::receive(const int rank, const int tag) {
+boost::optional<MpiMessage> Gateway::receive(const int rank, const int tag) {
     ping(rank);
     return _receive(rank, tag);
 }
 
-boost::optional<std::string> Gateway::send_and_receive(const int rank, const int tag, const std::string &msg) {
+boost::optional<MpiMessage> Gateway::send_and_receive(const int rank, const int tag, const MpiMessage &msg) {
     ping(rank);
     _send(rank, tag, msg);
     return _receive(rank, tag);
 }
 
-void Gateway::unsafe_send(const int rank, const int tag, const std::string &msg){
+void Gateway::unsafe_send(const int rank, const int tag, const MpiMessage &msg){
     _send(rank, tag, msg);
 }
 
-boost::optional<std::string> Gateway::unsafe_receive(const int rank, const int tag) {
+boost::optional<MpiMessage> Gateway::unsafe_receive(const int rank, const int tag) {
     return _receive(rank, tag);
 }

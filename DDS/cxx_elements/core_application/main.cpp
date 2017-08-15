@@ -15,8 +15,6 @@
 namespace mpi = boost::mpi;
 namespace po = boost::program_options;
 
-constexpr auto master_delay = 10u;
-
 int main(int argc, const char* argv[]) {
     std::cout << std::boolalpha;
     std::cout.sync_with_stdio(true);

@@ -22,7 +22,10 @@ namespace mpi = boost::mpi;
 class MasterGateway : public Gateway {
 public:
     using Gateway::Gateway;
-    MasterGateway(boost::shared_ptr<mpi::communicator>);
+    MasterGateway(boost::shared_ptr<mpi::communicator>, const std::string&);
+
+    void send_to_salve(int, const MpiMessage&);
+    boost::optional<MpiMessage> receive_from_slave(int);
 };
 
 class Master {

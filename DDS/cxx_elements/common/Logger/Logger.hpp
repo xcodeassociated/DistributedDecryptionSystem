@@ -7,8 +7,6 @@
 
 #include <string>
 #include <iostream>
-//#include <mutex>
-//#include <memory>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>

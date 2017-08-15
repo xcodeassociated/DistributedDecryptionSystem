@@ -14,14 +14,22 @@
 
 #include "Slave.hpp"
 
-SlaveGateway::SlaveGateway(boost::shared_ptr<mpi::communicator> _world) :
-        Gateway(_world) {
+SlaveGateway::SlaveGateway(boost::shared_ptr<mpi::communicator> _world, const std::string& _hosts_file_name) :
+        Gateway(_world, _hosts_file_name) {
     ;
+}
+
+void SlaveGateway::send_to_master(const MpiMessage& msg) {
+    this->unsafe_send(0, 0, msg);
+}
+
+boost::optional<MpiMessage> SlaveGateway::receive_from_master() {
+    return this->unsafe_receive(0, 0);
 }
 
 Slave::Slave(boost::shared_ptr<mpi::communicator> _world) :
         world{_world},
-        messageGateway{this->world} {
+        messageGateway{this->world, "hosts"} {
     std::string logger_label = "Slave_" + std::to_string(this->world->rank());
     this->logger = Logger::instance(logger_label);
 }

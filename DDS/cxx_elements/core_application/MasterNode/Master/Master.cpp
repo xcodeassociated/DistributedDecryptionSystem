@@ -14,15 +14,23 @@
 
 #include "Master.hpp"
 
-MasterGateway::MasterGateway(boost::shared_ptr<mpi::communicator> _world) :
-        Gateway(_world) {
+MasterGateway::MasterGateway(boost::shared_ptr<mpi::communicator> _world, const std::string& _hosts_file_name) :
+        Gateway(_world, _hosts_file_name) {
     ;
+}
+
+void MasterGateway::send_to_salve(int rank, const MpiMessage& msg) {
+    this->send(rank, 0, msg);
+}
+
+boost::optional<MpiMessage> MasterGateway::receive_from_slave(int rank) {
+    this->receive(rank, 0);
 }
 
 Master::Master(boost::shared_ptr<mpi::communicator> _world) :
         world{_world},
         logger{Logger::instance("Master")},
-        messageGateway{this->world} {
+        messageGateway{this->world, "hosts"} {
     ;
 }
 
