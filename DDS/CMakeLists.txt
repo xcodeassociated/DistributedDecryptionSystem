@@ -205,8 +205,6 @@ if (CP)
                 COMMAND ${CMAKE_COMMAND} -E
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libLoggerLib.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/MasterNode/libWatchdogLib.so ${CP}
-                COMMAND ${CMAKE_COMMAND} -E
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/Worker/libDecryptorLib.so ${CP}
                 )
 

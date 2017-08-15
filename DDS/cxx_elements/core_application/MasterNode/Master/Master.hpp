@@ -6,19 +6,37 @@
 #define DDS_MASTERMAINCLASS_HPP
 
 #include <memory>
+#include <cmath>
+
+#include <boost/container/vector.hpp>
+#include <boost/container/map.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/mpi.hpp>
 
 #include <common/Message/MPIMessage.hpp>
 #include <Logger.hpp>
+#include <Gateway.hpp>
 
-#include "MasterMessageGateway.hpp"
+namespace mpi = boost::mpi;
+
+class MasterGateway : public Gateway {
+public:
+    using Gateway::Gateway;
+    MasterGateway(boost::shared_ptr<mpi::communicator>);
+};
 
 class Master {
     std::shared_ptr<Logger> logger;
-    MasterMessageGateway messageGateway;
+    boost::shared_ptr<mpi::communicator> world = nullptr;
+    MasterGateway messageGateway;
 
 public:
-    Master();
-    bool init(void);
+    Master(boost::shared_ptr<mpi::communicator>);
+    bool init(uint64_t, uint64_t);
+    boost::container::vector<std::pair<uint64_t, uint64_t>> calculate_range(uint64_t absolute_key_from, uint64_t absolute_key_to, int size);
+    void collect_slave_info();
+    void prepare_slaves();
+    void start();
 };
 
 #endif //DDS_MASTERMAINCLASS_HPP

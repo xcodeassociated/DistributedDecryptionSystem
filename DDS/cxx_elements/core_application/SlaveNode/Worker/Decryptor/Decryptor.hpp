@@ -5,11 +5,35 @@
 #ifndef DDS_WORKERIMPLEMENTATION_HPP
 #define DDS_WORKERIMPLEMENTATION_HPP
 
+#include <string>
+#include <utility>
+#include <boost/atomic.hpp>
+
 #include <WorkerBase.hpp>
 
+using byte = unsigned char;
+
 class Decryptor : public WorkerBase {
+    KeyRange range{0, 0};
+    uint64_t current_key = 0; //TODO: boost::atomic!
+    std::string file_path = "";
+    std::string decrypted_file_path = "";
+    std::string encryptd_data = "";
+
+    bool init_decryptor(int, KeyRange, std::string, std::string);
+
 public:
-    virtual bool init() override ;
+
+    template <class ... T>
+    bool init(T&... args) {
+        return this->init_decryptor(std::forward<T>(args)...);
+    }
+
+    void worker_process() override;
+
+    boost::container::vector<unsigned char> uint64ToBytes(uint64_t value) noexcept;
+    std::string hashString(const std::string& str) noexcept;
+
     Decryptor();
 };
 

@@ -5,10 +5,24 @@
 #ifndef DDS_WORKERBASE_HPP
 #define DDS_WORKERBASE_HPP
 
+struct KeyRange{
+    uint64_t begin;
+    uint64_t end;
+};
 
 class WorkerBase {
+protected:
+    int id = 0;
+    bool work = false;
+
 public:
-    virtual bool init() = 0;
+
+    virtual void worker_process() = 0;
+
+    virtual void start();
+
+    virtual void stop();
+
     virtual ~WorkerBase() = default;
 };
 
