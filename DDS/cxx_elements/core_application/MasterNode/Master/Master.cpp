@@ -71,14 +71,22 @@ bool Master::init(uint64_t range_begine, uint64_t range_end) {
     return false;
 }
 
-void Master::collect_slave_info(){
+bool Master::init(std::string file_name) {
 
 }
 
-void Master::prepare_slaves(){
+void Master::collect_slave_info() {
 
 }
 
-void Master::start(){
+void Master::prepare_slaves() {
+
+}
+
+void Master::start() {
+
+}
+
+void Master::fault_handle(int rank, Master::Fault_Type fault_type) {
 
 }

@@ -39,6 +39,9 @@
 !DDS/cxx_tests/test_libs/README.txt
 DDS/cxx_tests/test_libs/*
 
+# RapidJSON 
+DDS/cxx_elements/common/JsonFileOperations/rapidjson/*
+
 # DDS binaries
 DDS/RunTests
 DDS/DDS

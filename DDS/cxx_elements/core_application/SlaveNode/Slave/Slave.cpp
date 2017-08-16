@@ -30,12 +30,8 @@ boost::optional<MpiMessage> SlaveGateway::receive_from_master() {
 Slave::Slave(boost::shared_ptr<mpi::communicator> _world) :
         world{_world},
         messageGateway{this->world, "hosts"} {
-#ifndef TESTING
-    std::string logger_label = "Slave_" + std::to_string(this->world->rank());
-#else
-    std::string logger_label = "Slave_TEST";
-#endif
-    this->logger = Logger::instance(logger_label);
+
+    this->logger = Logger::instance("Slave");
 }
 
 bool Slave::init() {

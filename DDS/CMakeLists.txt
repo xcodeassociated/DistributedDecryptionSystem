@@ -32,6 +32,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
 endif()
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules")
+
 if (ARM)
     message(STATUS "ARCH: arm")
 
@@ -51,6 +53,16 @@ if (ARM)
 
     include_directories("/home/jm/arm-linux-gnueabihf-pi/usr/include/")
 
+    find_package(MPI REQUIRED)
+    if(MPI_FOUND)
+        include_directories(${MPI_INCLUDE_PATH})
+
+        message(STATUS "ARM_MPI Found!")
+        message(STATUS "ARM_MPI include: ${MPI_INCLUDE_PATH}")
+        message(STATUS "ARM_MPI libs: ${MPI_LIBRARIES}")
+    endif()
+
+
     find_package(Boost COMPONENTS mpi serialization program_options chrono thread system filesystem REQUIRED)
     if(Boost_FOUND)
         include_directories(${Boost_INCLUDE_DIRS})
@@ -61,18 +73,18 @@ if (ARM)
         message(STATUS "ARM_Boost libs: ${Boost_INCLUDE_DIRS}")
     endif()
 
+    find_package(CryptoPP REQUIRED)
+    if (CryptoPP_FOUND)
+        include_directories("${CRYPTOPP_INCLUDE_DIR}")
+
+        message(STATUS "Crypto++ found!")
+        message(STATUS "Crypto++ include: ${CRYPTOPP_INCLUDE_DIR}")
+        message(STATUS "Crypto++ libs: ${CRYPTOPP_LIBRARY}")
+    endif()
+
     set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/openmpi/")
     set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/openmpi/include/")
     set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/openmpi/lib/")
-
-    find_package(MPI REQUIRED)
-    if(MPI_FOUND)
-        include_directories(${MPI_INCLUDE_PATH})
-
-        message(STATUS "ARM_MPI Found!")
-        message(STATUS "ARM_MPI include: ${MPI_INCLUDE_PATH}")
-        message(STATUS "ARM_MPI libs: ${MPI_LIBRARIES}")
-    endif()
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread ")
 
@@ -108,9 +120,7 @@ else()
         message(STATUS "Boost libs: ${Boost_LIBRARY_DIRS}")
     endif()
 
-    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/cryptopp-cmake")
     find_package(CryptoPP REQUIRED)
-
     if (CryptoPP_FOUND)
         include_directories("${CRYPTOPP_INCLUDE_DIR}")
 
@@ -135,13 +145,23 @@ if (O)
     endif()
 endif()
 
-set(APP_CORE cxx_elements/core_application)
 set(CXX cxx_elements)
+set(APP_CORE cxx_elements/core_application)
+set(MOCKS_DIR cxx_tests/test_mocked_headres)
+
+set(RAPIDJSON_INCLUDEDIR "${CXX}/common/JsonFileOperations/rapidjson/include")
+find_package(rapidjson REQUIRED)
+if (RAPIDJSON_FOUND)
+    message(STATUS "RapidJson found!")
+    include_directories("${RAPIDJSON_INCLUDE_DIRS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${RAPIDJSON_CXX_FLAGS}")
+endif()
 
 include_directories(${CXX}/common/Logger)
 include_directories(${CXX}/common/Message)
 include_directories(${CXX}/common/MessageGateway)
 include_directories(${CXX}/common/Ping)
+include_directories(${CXX}/common/JsonFileOperations)
 include_directories(${APP_CORE}/MasterNode/Watchdog)
 include_directories(${APP_CORE}/MasterNode/Master)
 include_directories(${APP_CORE}/SlaveNode/Worker/WorkerBase)
@@ -149,7 +169,6 @@ include_directories(${APP_CORE}/SlaveNode/Worker/Decryptor)
 include_directories(${APP_CORE}/SlaveNode/Slave)
 include_directories(${CXX})
 
-set(MOCKS_DIR cxx_tests/test_mocked_headres)
 add_subdirectory(${CXX}/common)
 add_subdirectory(${APP_CORE}/MasterNode)
 add_subdirectory(${APP_CORE}/SlaveNode)

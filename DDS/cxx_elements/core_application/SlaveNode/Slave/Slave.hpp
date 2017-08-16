@@ -11,7 +11,7 @@
 #include <boost/mpi.hpp>
 #include <boost/atomic.hpp>
 
-#include <common/Message/MPIMessage.hpp>
+#include <MPIMessage.hpp>
 #include <Logger.hpp>
 #include <Decryptor.hpp>
 #include <Gateway.hpp>

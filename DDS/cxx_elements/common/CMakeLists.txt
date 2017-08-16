@@ -12,3 +12,7 @@ set(GatewaySOURCES
         MessageGateway/Gateway.cpp)
 add_library(GatewayLib SHARED ${GatewaySOURCES})
 target_link_libraries(GatewayLib PingLib ${MPI_LIBRARIES} ${Boost_LIBRARIES})
+
+set(JsonFileOperationsSOURCES
+        JsonFileOperations/JsonFileOperations.cpp)
+add_library(JsonFileOperationsLib SHARED ${JsonFileOperationsSOURCES})
