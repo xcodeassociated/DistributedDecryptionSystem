@@ -5,6 +5,8 @@
 #ifndef DDS_WORKERBASE_HPP
 #define DDS_WORKERBASE_HPP
 
+#include <cstdint>
+
 struct KeyRange{
     uint64_t begin;
     uint64_t end;
