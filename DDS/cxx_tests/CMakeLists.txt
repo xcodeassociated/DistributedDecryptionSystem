@@ -31,13 +31,14 @@ target_link_libraries(TEST_PingLib ${Boost_LIBRARIES})
 set(TEST_Gateway
         ${COMMON}/MessageGateway/Gateway.cpp)
 add_library(TEST_GatewayLib SHARED ${TEST_Gateway})
-target_link_libraries(TEST_GatewayLib TEST_PingLib)
+target_link_libraries(TEST_GatewayLib TEST_PingLib ${MPI_LIBRARIES} ${Boost_LIBRARIES})
 
 set(TEST_WorkerBaseLibSOURCES
         ${APP_CORE}/SlaveNode/Worker/WorkerBase/WorkerBase.cpp)
 set(TEST_DecryptorLibSOURCES
         ${APP_CORE}/SlaveNode/Worker/Decryptor/Decryptor.cpp)
 add_library(TEST_DecryptorLib SHARED ${TEST_WorkerBaseLibSOURCES} ${TEST_DecryptorLibSOURCES})
+target_link_libraries(TEST_DecryptorLib ${CRYPTOPP_LIBRARY} ${Boost_LIBRARIES})
 
 set(TEST_Master
         ${APP_CORE}/MasterNode/Master/Master.cpp)
