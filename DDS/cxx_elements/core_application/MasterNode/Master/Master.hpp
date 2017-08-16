@@ -32,6 +32,8 @@ public:
 class Master {
     boost::shared_ptr<Logger> logger;
     boost::shared_ptr<mpi::communicator> world = nullptr;
+    std::string hosts_file = "";
+    std::string progress_file = "";
     MasterGateway messageGateway;
     JsonFileOperations jsonFile;
 
@@ -42,7 +44,8 @@ class Master {
     void fault_handle(int, Fault_Type);
 
 public:
-    Master(boost::shared_ptr<mpi::communicator>);
+
+    Master(boost::shared_ptr<mpi::communicator>, std::string, std::string);
     bool init(uint64_t, uint64_t);
     bool init(std::string);
     boost::container::vector<std::pair<uint64_t, uint64_t>> calculate_range(uint64_t absolute_key_from, uint64_t absolute_key_to, int size);

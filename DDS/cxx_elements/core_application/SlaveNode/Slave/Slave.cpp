@@ -27,9 +27,10 @@ boost::optional<MpiMessage> SlaveGateway::receive_from_master() {
     return this->unsafe_receive(0, 0);
 }
 
-Slave::Slave(boost::shared_ptr<mpi::communicator> _world) :
+Slave::Slave(boost::shared_ptr<mpi::communicator> _world, std::string _hosts_file) :
         world{_world},
-        messageGateway{this->world, "hosts"} {
+        hosts_file{_hosts_file},
+        messageGateway{this->world, hosts_file} {
 
     this->logger = Logger::instance("Slave");
 }

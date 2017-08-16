@@ -219,6 +219,8 @@ if (CP)
                 COMMAND ${CMAKE_COMMAND} -E
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libPingLib.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libJsonFileOperationsLib.so ${CP}
+                COMMAND ${CMAKE_COMMAND} -E
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/Worker/libDecryptorLib.so ${CP}
                 )
 

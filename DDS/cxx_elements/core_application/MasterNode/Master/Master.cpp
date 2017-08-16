@@ -27,10 +27,13 @@ boost::optional<MpiMessage> MasterGateway::receive_from_slave(int rank) {
     this->receive(rank, 0);
 }
 
-Master::Master(boost::shared_ptr<mpi::communicator> _world) :
+Master::Master(boost::shared_ptr<mpi::communicator> _world, std::string _hosts_file, std::string _progress_file) :
         world{_world},
         logger{Logger::instance("Master")},
-        messageGateway{this->world, "hosts"} {
+        hosts_file{_hosts_file},
+        progress_file{_progress_file},
+        messageGateway{this->world, hosts_file},
+        jsonFile{""} {
     ;
 }
 

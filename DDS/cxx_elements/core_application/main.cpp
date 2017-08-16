@@ -22,6 +22,7 @@ int main(int argc, const char* argv[]) {
 
     boost::shared_ptr<mpi::environment> env = boost::make_shared<mpi::environment>(mpi::threading::single, true);
     boost::shared_ptr<mpi::communicator> world = boost::make_shared<mpi::communicator>();
+    std::string hosts_file = "";
 
     if (world->rank() == 0) {
 
@@ -29,6 +30,7 @@ int main(int argc, const char* argv[]) {
         uint64_t range_end = 0;
         std::string encrypted_file = "";
         std::string decrypted_file = "";
+        std::string progress_file = "";
 
         po::options_description desc("DDS Options");
         desc.add_options()
@@ -74,7 +76,7 @@ int main(int argc, const char* argv[]) {
             std::cout << "Decrypt file path not set... Using default: " << decrypted_file << std::endl;
         }
 
-        Master master(world);
+        Master master(world, hosts_file, progress_file);
         master.init(range_begine, range_end);
         master.collect_slave_info();
         master.prepare_slaves();
@@ -82,7 +84,7 @@ int main(int argc, const char* argv[]) {
 
     } else {
 
-        Slave slave(world);
+        Slave slave(world, hosts_file);
         slave.init();
         slave.start();
 

@@ -30,12 +30,13 @@ public:
 class Slave {
     boost::shared_ptr<Logger> logger;
     boost::shared_ptr<mpi::communicator> world = nullptr;
+    std::string hosts_file = "";
     SlaveGateway messageGateway;
     boost::container::vector<boost::shared_ptr<boost::thread>> thread_array;
     boost::container::vector<boost::shared_ptr<Decryptor>> worker_pointers;
 
 public:
-    Slave(boost::shared_ptr<mpi::communicator>);
+    Slave(boost::shared_ptr<mpi::communicator>, std::string);
 
     bool init();
     void start();
