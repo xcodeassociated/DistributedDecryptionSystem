@@ -126,6 +126,8 @@ bool Master::init(uint64_t range_begine, uint64_t range_end) {
         key_ranges calculated_ranges = this->calculate_range(range_begine, range_end, total_threads);
 
         this->init_slaves(slaves, calculated_ranges);
+        this->inited = true;
+        return true;
 
     } catch (const GatewayIncorrectRankException& e) {
         *logger_error << "GatewayIncorrectRankException: " << e.what() << std::endl;
@@ -156,9 +158,6 @@ bool Master::init(uint64_t range_begine, uint64_t range_end) {
 
         return false;
     }
-    this->inited = true;
-
-    return true;
 }
 
 bool Master::init(const std::string& file_name) {
@@ -205,6 +204,7 @@ void Master::start() {
 //    while (true) {
 //
 //    }
+
 }
 
 void Master::fault_handle(int rank, Master::Fault_Type fault_type) {

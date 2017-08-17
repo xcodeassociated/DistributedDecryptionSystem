@@ -33,4 +33,10 @@ struct SlaveNotMachingOperationRequestException : public SlaveException {
     }
 };
 
+struct SlaveNotInitedException : public SlaveException {
+    SlaveNotInitedException(const std::string& msg) : SlaveException{msg} {
+        ;
+    }
+};
+
 #endif //DDS_SLAVEEXCEPTIONS_HPP

@@ -53,7 +53,7 @@ Slave::key_ranges Slave::convert_init_data(const std::string& data) {
     }
 }
 
-void Slave::init_workers(const key_ranges& ranges) {
+void Slave::init_workers() {
 
 }
 
@@ -105,8 +105,9 @@ bool Slave::init() {
     try {
 
         this->respond_collect_info();
-        key_ranges ranges = this->respond_collect_ranges();
-        this->init_workers(ranges);
+        this->work_ranges = this->respond_collect_ranges();
+        this->inited = true;
+        return true;
 
     } catch (const GatewayIncorrectRankException& e) {
         *logger_error << "GatewayIncorrectRankException: " << e.what() << std::endl;
@@ -126,10 +127,12 @@ bool Slave::init() {
         return false;
     }
 
-
-    return false;
 }
 
 void Slave::start(){
+    if (!inited)
+        throw SlaveNotInitedException{""};
+
+    this->init_workers();
 
 }

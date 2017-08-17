@@ -29,15 +29,16 @@ class Slave {
     boost::shared_ptr<SlaveGateway> messageGateway = nullptr;
     boost::container::vector<boost::shared_ptr<boost::thread>> thread_array;
     boost::container::vector<boost::shared_ptr<Decryptor>> worker_pointers;
-
+    key_ranges work_ranges;
     int rank = 0;
+    bool inited = false;
 
     std::string convert_progress_to_string(const boost::container::map<int, uint64_t> &);
     int get_available_threads();
     void respond_collect_info();
     key_ranges respond_collect_ranges();
     key_ranges convert_init_data(const std::string&);
-    void init_workers(const key_ranges&);
+    void init_workers();
 
 public:
     Slave(boost::shared_ptr<mpi::communicator>, std::string);
