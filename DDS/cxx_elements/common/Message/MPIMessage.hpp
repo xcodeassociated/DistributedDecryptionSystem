@@ -12,8 +12,6 @@ using data_type = std::string;
 using rank_type = int;
 using message_id_type = uint32_t;
 
-uint64_t test_match = 0;
-
 struct MpiMessage{
     enum class Event : int {
         CALLBACK = 0,

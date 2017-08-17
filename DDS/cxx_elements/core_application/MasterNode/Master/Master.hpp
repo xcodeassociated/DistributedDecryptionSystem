@@ -7,50 +7,59 @@
 
 #include <memory>
 #include <cmath>
+#include <stdexcept>
 
 #include <boost/container/vector.hpp>
 #include <boost/container/map.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/mpi.hpp>
 
-#include <MPIMessage.hpp>
-#include <Logger.hpp>
-#include <Gateway.hpp>
-#include <JsonFileOperations.hpp>
-
 namespace mpi = boost::mpi;
 
-class MasterGateway : public Gateway {
-public:
-    using Gateway::Gateway;
-    MasterGateway(boost::shared_ptr<mpi::communicator>, const std::string&);
-
-    void send_to_salve(int, const MpiMessage&);
-    boost::optional<MpiMessage> receive_from_slave(int);
-};
+class Logger;
+class LoggerError;
+class MasterGateway;
+class JsonFileOperations;
 
 class Master {
-    boost::shared_ptr<Logger> logger;
+public:
+
+    using key_ranges = boost::container::vector<std::pair<uint64_t, uint64_t>>;
+    using slave_info = boost::container::map<int, int>;
+
+private:
+
+    boost::shared_ptr<Logger> logger = nullptr;
+    boost::shared_ptr<LoggerError> logger_error = nullptr;
     boost::shared_ptr<mpi::communicator> world = nullptr;
     std::string hosts_file = "";
     std::string progress_file = "";
-    MasterGateway messageGateway;
-    JsonFileOperations jsonFile;
+    boost::shared_ptr<MasterGateway> messageGateway = nullptr;
+    boost::shared_ptr<JsonFileOperations> jsonFile = nullptr;
+
+    bool work = false;
+    bool inited = false;
+
+    boost::container::map<int, key_ranges> progress;
 
     enum class Fault_Type : int {
-
+        PING_FAULT = 1,
+        SEND_FAULT,
+        RECEIVE_FAULT
     };
 
     void fault_handle(int, Fault_Type);
+    int get_slaves_count() const;
+    slave_info collect_slave_info();
+    void setup_progress(const slave_info&);
 
 public:
 
     Master(boost::shared_ptr<mpi::communicator>, std::string, std::string);
     bool init(uint64_t, uint64_t);
-    bool init(std::string);
-    boost::container::vector<std::pair<uint64_t, uint64_t>> calculate_range(uint64_t absolute_key_from, uint64_t absolute_key_to, int size);
-    void collect_slave_info();
-    void prepare_slaves();
+    bool init(const std::string&);
+    key_ranges calculate_range(uint64_t absolute_key_from, uint64_t absolute_key_to, int size) const;
+
     void start();
 };
 

@@ -26,3 +26,15 @@ std::string Logger::getTimestamp() {
 boost::shared_ptr<Logger> LoggerFactory::create_logger(const std::string component_name){
     return boost::shared_ptr<Logger>(new Logger(LoggerFactory::logger_sync, component_name));
 }
+
+boost::shared_ptr<LoggerError> LoggerFactory::create_logger_error(const std::string component_name){
+    return boost::shared_ptr<LoggerError>(new LoggerError(LoggerFactory::logger_sync, component_name));
+}
+
+LoggerError::LoggerError(boost::mutex& mutex_ref, const std::string _component_name) : Logger(mutex_ref, _component_name) {
+    ;
+}
+
+boost::shared_ptr<LoggerError> LoggerError::instance(const std::string component_name) {
+    return LoggerFactory::create_logger_error(component_name);
+}

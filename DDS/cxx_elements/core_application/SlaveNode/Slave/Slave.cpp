@@ -10,36 +10,27 @@
 #include <boost/algorithm/algorithm.hpp>
 #include <boost/move/move.hpp>
 #include <boost/tuple/tuple.hpp>
-#include <boost/function.hpp>
 
+#include <Logger.hpp>
+#include <Decryptor.hpp>
+#include "SlaveGateway.hpp"
+#include "SlaveMessageHelper.hpp"
 #include "Slave.hpp"
-
-SlaveGateway::SlaveGateway(boost::shared_ptr<mpi::communicator> _world, const std::string& _hosts_file_name) :
-        Gateway(_world, _hosts_file_name) {
-    ;
-}
-
-void SlaveGateway::send_to_master(const MpiMessage& msg) {
-    this->unsafe_send(0, 0, msg);
-}
-
-boost::optional<MpiMessage> SlaveGateway::receive_from_master() {
-    return this->unsafe_receive(0, 0);
-}
 
 Slave::Slave(boost::shared_ptr<mpi::communicator> _world, std::string _hosts_file) :
         world{_world},
         hosts_file{_hosts_file},
-        messageGateway{this->world, hosts_file} {
+        messageGateway(new SlaveGateway(this->world, hosts_file)) {
 
     this->logger = Logger::instance("Slave");
+    this->logger_error = LoggerError::instance("Slave_ERROR");
 }
 
 bool Slave::init() {
     this->thread_array = {};
     this->worker_pointers = {};
 
-    *logger << "init\n";
+    *logger << "init" << std::endl;
     return false;
 }
 

@@ -162,6 +162,7 @@ include_directories(${CXX}/common/Message)
 include_directories(${CXX}/common/MessageGateway)
 include_directories(${CXX}/common/Ping)
 include_directories(${CXX}/common/JsonFileOperations)
+include_directories(${CXX}/common/RunOptions)
 include_directories(${APP_CORE}/MasterNode/Watchdog)
 include_directories(${APP_CORE}/MasterNode/Master)
 include_directories(${APP_CORE}/SlaveNode/Worker/WorkerBase)
@@ -187,6 +188,7 @@ if (ARM)
             /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so.5
             /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libudev.so.1
             /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libpthread.so.0
+            RunOptionsLib
             MasterNodeObject
             SlaveNodeObject)
 else()
@@ -195,6 +197,7 @@ else()
             ${MPI_LIBRARIES}
             ${Boost_LIBRARIES}
             ${CRYPTOPP_LIBRARY}
+            RunOptionsLib
             MasterNodeObject
             SlaveNodeObject
             pthread)
@@ -218,6 +221,8 @@ if (CP)
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libGatewayLib.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libPingLib.so ${CP}
+                COMMAND ${CMAKE_COMMAND} -E
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libRunOptionsLib.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
                     copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libJsonFileOperationsLib.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
