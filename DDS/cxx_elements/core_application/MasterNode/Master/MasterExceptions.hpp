@@ -27,4 +27,10 @@ struct MasterCollectSlaveInfoException : public MasterException {
     }
 };
 
+struct MasterCallbackException : public MasterException {
+    MasterCallbackException(const std::string& msg) : MasterException{msg} {
+        ;
+    }
+};
+
 #endif //DDS_MASTEREXCEPTIONS_HPP

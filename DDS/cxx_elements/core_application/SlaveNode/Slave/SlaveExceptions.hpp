@@ -15,4 +15,22 @@ struct SlaveException : public std::runtime_error {
     }
 };
 
+struct SlaveRequestException : public SlaveException {
+    SlaveRequestException(const std::string& msg) : SlaveException{msg} {
+        ;
+    }
+};
+
+struct SlaveRequestNotInitializedException : public SlaveException {
+    SlaveRequestNotInitializedException(const std::string& msg) : SlaveException{msg} {
+        ;
+    }
+};
+
+struct SlaveNotMachingOperationRequestException : public SlaveException {
+    SlaveNotMachingOperationRequestException(const std::string& msg) : SlaveException{msg} {
+        ;
+    }
+};
+
 #endif //DDS_SLAVEEXCEPTIONS_HPP

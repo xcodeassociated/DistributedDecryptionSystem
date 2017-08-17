@@ -11,10 +11,8 @@ MpiMessage MessageHelper::create_INFO(int rank) {
     return {Gateway::id++, rank, 0, MpiMessage::Event::INFO, true, "?"};
 }
 
-MpiMessage MessageHelper::create_INIT(int rank, uint64_t begin, uint64_t end) {
-    std::stringstream data_stream;
-    data_stream << begin << "," << end;
-    return {Gateway::id++, rank, 0, MpiMessage::Event::INIT, true, data_stream.str()};
+MpiMessage MessageHelper::create_INIT(int rank, const std::string& data) {
+    return {Gateway::id++, rank, 0, MpiMessage::Event::INIT, true, data};
 }
 
 MpiMessage MessageHelper::create_PING(int rank) {

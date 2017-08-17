@@ -7,15 +7,13 @@
 
 #include <string>
 #include <utility>
-#include <boost/atomic.hpp>
 
 #include <WorkerBase.hpp>
 
 using byte = unsigned char;
 
 class Decryptor : public WorkerBase {
-    KeyRange range{0, 0};
-    uint64_t current_key = 0; //TODO: boost::atomic!
+
     std::string file_path = "";
     std::string decrypted_file_path = "";
     std::string encryptd_data = "";

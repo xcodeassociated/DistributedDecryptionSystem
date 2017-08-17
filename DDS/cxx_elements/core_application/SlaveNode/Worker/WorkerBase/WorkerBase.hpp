@@ -6,6 +6,7 @@
 #define DDS_WORKERBASE_HPP
 
 #include <cstdint>
+#include <boost/atomic.hpp>
 
 struct KeyRange{
     uint64_t begin;
@@ -16,6 +17,8 @@ class WorkerBase {
 protected:
     int id = 0;
     bool work = false;
+    KeyRange range{0, 0};
+    boost::atomic<uint64_t> current_key{0};
 
 public:
 

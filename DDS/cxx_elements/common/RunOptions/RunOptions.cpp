@@ -56,7 +56,7 @@ namespace RunOptions {
             runParameters.decrypted_file = vm["decrypt"].as<std::string>();
         }
 
-        //
+        return runParameters;
     }
 
 }

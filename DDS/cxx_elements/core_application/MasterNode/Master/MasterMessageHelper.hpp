@@ -10,7 +10,7 @@
 
 struct MessageHelper {
     static MpiMessage create_INFO(int);
-    static MpiMessage create_INIT(int, uint64_t, uint64_t);
+    static MpiMessage create_INIT(int, const std::string&);
     static MpiMessage create_PING(int);
     static MpiMessage create_KILL(int);
 };

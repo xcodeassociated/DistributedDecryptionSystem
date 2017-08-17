@@ -31,6 +31,7 @@ protected:
     std::string component_name;
     boost::mutex& mu;
     std::string getTimestamp();
+    bool flushed = true;
 
 public:
     virtual ~Logger() = default;
@@ -41,14 +42,34 @@ public:
     typedef CoutType& (*StandardEndLine)(CoutType&);
 
     Logger& operator<<(StandardEndLine manip) {
+        flushed = true;
         manip(std::cout);
+        return *this;
+    }
+
+    Logger& operator<<(char c) {
+        boost::lock_guard<boost::mutex> lock(this->mu);
+        if (c == '\n')
+            flushed = true;
+
+        if (flushed) {
+            std::cout << '[' << this->getTimestamp() << "] " << this->component_name << ": " << c;
+            flushed = false;
+        }else
+            std::cout << c;
         return *this;
     }
 
     template <typename T>
     Logger& operator<<(const T& t) {
         boost::lock_guard<boost::mutex> lock(this->mu);
-        std::cout << '[' << this->getTimestamp() << "] " << this->component_name << ": " << t;
+
+        if (flushed) {
+            std::cout << '[' << this->getTimestamp() << "] " << this->component_name << ": " << t;
+            flushed = false;
+        }else
+            std::cout << t;
+
         return *this;
     }
 
@@ -66,15 +87,34 @@ public:
 
     static boost::shared_ptr<LoggerError> instance(const std::string component_name);
 
-    Logger& operator<<(StandardEndLine manip) {
+    LoggerError& operator<<(StandardEndLine manip) {
+        flushed = true;
         manip(std::cerr);
+        return *this;
+    }
+
+    LoggerError& operator<<(char c) {
+        boost::lock_guard<boost::mutex> lock(this->mu);
+        if (c == '\n')
+            flushed = true;
+
+        if (flushed) {
+            std::cerr << '[' << this->getTimestamp() << "] " << this->component_name << ": " << c;
+            flushed = false;
+        }else
+            std::cerr << c;
         return *this;
     }
 
     template <typename T>
     LoggerError& operator<<(const T& t) {
         boost::lock_guard<boost::mutex> lock(this->mu);
-        std::cerr << '[' << this->getTimestamp() << "] " << this->component_name << ": " << t;
+        if (flushed) {
+            std::cerr << '[' << this->getTimestamp() << "] " << this->component_name << ": " << t;
+            flushed = false;
+        }else
+            std::cerr << t;
+
         return *this;
     }
 

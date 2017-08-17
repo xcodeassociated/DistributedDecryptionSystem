@@ -10,7 +10,7 @@
 
 using data_type = std::string;
 using rank_type = int;
-using message_id_type = uint32_t;
+using message_id_type = int;
 
 struct MpiMessage{
     enum class Event : int {

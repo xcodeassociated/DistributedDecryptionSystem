@@ -96,17 +96,17 @@ void Gateway::ping(const int rank){
 }
 
 void Gateway::send(const int rank, const int tag, const MpiMessage &msg){
-    ping(rank);
+    //ping(rank);
     _send(rank, tag, msg);
 }
 
 boost::optional<MpiMessage> Gateway::receive(const int rank, const int tag) {
-    ping(rank);
+    //ping(rank);
     return _receive(rank, tag);
 }
 
 boost::optional<MpiMessage> Gateway::send_and_receive(const int rank, const int tag, const MpiMessage &msg) {
-    ping(rank);
+    //ping(rank);
     _send(rank, tag, msg);
     return _receive(rank, tag);
 }

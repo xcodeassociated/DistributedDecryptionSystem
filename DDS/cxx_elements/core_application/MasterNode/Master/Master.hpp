@@ -8,6 +8,7 @@
 #include <memory>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 
 #include <boost/container/vector.hpp>
 #include <boost/container/map.hpp>
@@ -51,7 +52,8 @@ private:
     void fault_handle(int, Fault_Type);
     int get_slaves_count() const;
     slave_info collect_slave_info();
-    void setup_progress(const slave_info&);
+    void init_slaves(slave_info&, const key_ranges&);
+    boost::container::map<int, uint64_t> convert_ping_report(const std::string&);
 
 public:
 
