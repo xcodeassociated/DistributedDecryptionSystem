@@ -212,21 +212,13 @@ if (CP)
 
                 ## Copy also SHARED LIBs
                 COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/MasterNode/libMasterNodeObject.so ${CP}
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/MasterNode/*.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/libSlaveNodeObject.so ${CP}
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/*.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libLoggerLib.so ${CP}
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/*.so ${CP}
                 COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libGatewayLib.so ${CP}
-                COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libPingLib.so ${CP}
-                COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libRunOptionsLib.so ${CP}
-                COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/libJsonFileOperationsLib.so ${CP}
-                COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/Worker/libDecryptorLib.so ${CP}
+                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/Worker/*.so ${CP}
                 )
 
     endif()

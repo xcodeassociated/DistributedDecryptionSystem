@@ -52,6 +52,7 @@ int main(int argc, const char* argv[]) {
             }
         } catch (const MasterException& e) {
             std::cerr << e.what() << std::endl;
+            return EXIT_FAILURE;
         }
 
     } else {
@@ -62,6 +63,7 @@ int main(int argc, const char* argv[]) {
                 slave.start();
         } catch (const SlaveException& e) {
             std::cerr << e.what() << std::endl;
+            return EXIT_FAILURE;
         }
 
     }
