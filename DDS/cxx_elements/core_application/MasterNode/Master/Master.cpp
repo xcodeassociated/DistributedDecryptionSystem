@@ -19,7 +19,6 @@
 #include <Logger.hpp>
 #include "MasterMessageHelper.hpp"
 #include "MasterGateway.hpp"
-#include <JsonFileOperations.hpp>
 #include "GatewayExceptions.hpp"
 #include "MasterExceptions.hpp"
 #include "Master.hpp"
@@ -29,8 +28,7 @@ Master::Master(boost::shared_ptr<mpi::communicator> _world, std::string _hosts_f
         logger{Logger::instance("Master")},
         logger_error{LoggerError::instance("Master_ERROR")},
         hosts_file{_hosts_file},
-        messageGateway(new MasterGateway(this->world, hosts_file)),
-        jsonFile(new JsonFileOperations("")) {
+        messageGateway(new MasterGateway(this->world, hosts_file))  {
     ;
 }
 

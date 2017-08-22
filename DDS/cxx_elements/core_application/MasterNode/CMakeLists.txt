@@ -16,4 +16,4 @@ set(MasterGatewaySOURCES
 add_library(MasterGatewayLib SHARED ${MasterGatewaySOURCES})
 target_link_libraries(MasterGatewayLib GatewayLib)
 
-target_link_libraries(MasterNodeObject LoggerLib JsonFileOperationsLib MasterGatewayLib)
+target_link_libraries(MasterNodeObject LoggerLib MasterGatewayLib)

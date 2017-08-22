@@ -20,7 +20,6 @@ namespace mpi = boost::mpi;
 class Logger;
 class LoggerError;
 class MasterGateway;
-class JsonFileOperations;
 
 class Master {
 public:
@@ -36,7 +35,6 @@ private:
     std::string hosts_file = "";
     std::string progress_file = "DDS_Progress.txt";
     boost::shared_ptr<MasterGateway> messageGateway = nullptr;
-    boost::shared_ptr<JsonFileOperations> jsonFile = nullptr;
 
     bool work = false;
     bool inited = false;

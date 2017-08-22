@@ -16,10 +16,6 @@ set(GatewaySOURCES
 add_library(GatewayLib SHARED ${GatewaySOURCES})
 target_link_libraries(GatewayLib PingLib ${MPI_LIBRARIES} ${Boost_LIBRARIES})
 
-set(JsonFileOperationsSOURCES
-        JsonFileOperations/JsonFileOperations.cpp)
-add_library(JsonFileOperationsLib SHARED ${JsonFileOperationsSOURCES})
-
 set(RunOptionsSOURCES
         RunOptions/RunOptions.cpp
         RunOptions/RunOptionsExceptions.hpp)
