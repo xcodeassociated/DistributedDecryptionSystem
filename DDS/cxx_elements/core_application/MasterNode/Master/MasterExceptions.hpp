@@ -33,4 +33,10 @@ struct MasterCallbackException : public MasterException {
     }
 };
 
+struct MasterMissingProgressReportException : public MasterException {
+    MasterMissingProgressReportException(const std::string& msg) : MasterException{msg} {
+        ;
+    }
+};
+
 #endif //DDS_MASTEREXCEPTIONS_HPP

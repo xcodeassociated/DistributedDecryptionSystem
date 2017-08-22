@@ -14,9 +14,9 @@ MpiMessage SlaveMessageHelper::create_INIT_CALLBACK(int rank, int response_messa
 }
 
 MpiMessage SlaveMessageHelper::create_PING_CALLBACK(int rank, const std::string& data, int response_message_id) {
-    return {};
+    return {Gateway::id++, 0, rank, MpiMessage::Event::CALLBACK, false, data, MpiMessage::Callback{response_message_id, MpiMessage::Event::PING}};
 }
 
 MpiMessage SlaveMessageHelper::create_FOUND(int rank, const std::string& data) {
-    return {};
+    return {Gateway::id++, 0, rank, MpiMessage::Event::FOUND, false, data};
 }

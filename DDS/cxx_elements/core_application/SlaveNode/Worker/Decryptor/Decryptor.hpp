@@ -17,10 +17,15 @@ class Decryptor : public WorkerBase {
     std::string file_path = "";
     std::string decrypted_file_path = "";
     std::string encryptd_data = "";
+    std::string encrypted_sha = "";
 
     bool init_decryptor(int, KeyRange, std::string, std::string);
+    void load_data_buffer();
+    virtual void process_syscom() override;
+    void notify_key_found(uint64_t);
 
 public:
+    using WorkerBase::WorkerBase;
 
     template <class ... T>
     bool init(T&... args) {
@@ -32,7 +37,10 @@ public:
     boost::container::vector<unsigned char> uint64ToBytes(uint64_t value) noexcept;
     std::string hashString(const std::string& str) noexcept;
 
-    Decryptor();
+    Decryptor(boost::shared_ptr<boost::lockfree::spsc_queue<SysComSTR>>,
+              boost::shared_ptr<boost::lockfree::spsc_queue<SysComSTR>>);
+
+    virtual ~Decryptor() = default;
 };
 
 

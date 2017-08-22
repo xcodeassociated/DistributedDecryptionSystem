@@ -14,6 +14,7 @@
 #include <boost/function.hpp>
 
 #include <sstream>
+#include <algorithm>
 
 #include <Logger.hpp>
 #include "MasterMessageHelper.hpp"
@@ -23,12 +24,11 @@
 #include "MasterExceptions.hpp"
 #include "Master.hpp"
 
-Master::Master(boost::shared_ptr<mpi::communicator> _world, std::string _hosts_file, std::string _progress_file) :
+Master::Master(boost::shared_ptr<mpi::communicator> _world, std::string _hosts_file) :
         world{_world},
         logger{Logger::instance("Master")},
         logger_error{LoggerError::instance("Master_ERROR")},
         hosts_file{_hosts_file},
-        progress_file{_progress_file},
         messageGateway(new MasterGateway(this->world, hosts_file)),
         jsonFile(new JsonFileOperations("")) {
     ;
@@ -66,8 +66,46 @@ Master::key_ranges Master::calculate_range(uint64_t absolute_key_from, uint64_t 
     return ranges;
 };
 
-boost::container::map<int, uint64_t> Master::convert_ping_report(const std::string& str) {
 
+void Master::update_progress(int rank, const boost::container::map<int, uint64_t>& info) {
+    auto& kranges = this->progress[rank];
+    assert(kranges.size() == info.size());
+
+    for (const auto& pair : info) {
+        kranges[pair.first] = {pair.second, kranges[pair.first].second}; // move r-begin to new value, r-end stays still
+    }
+}
+
+void Master::init_progress_map(int rank, const boost::container::vector<std::pair<uint64_t, uint64_t>>& initial_range) {
+    key_ranges kr;
+    for (const auto& pair : initial_range){
+        kr.push_back({pair.first, pair.second});
+    }
+    this->progress[rank] = boost::move(kr);
+}
+
+boost::container::map<int, uint64_t> Master::convert_ping_report(const std::string& str) {
+    //Ping format:
+    //0:<key>
+    //1:<key>
+    //...
+    //n:<key>
+
+    boost::container::map<int, uint64_t> data{};
+    std::istringstream f(str);
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line == "\n")
+            break;
+
+        boost::container::vector<std::string> strs;
+        boost::split(strs, line, boost::is_any_of(":"));
+        assert(strs.size() == 2);
+        int th = boost::lexical_cast<int>(strs[0]);
+        uint64_t key = boost::lexical_cast<uint64_t>(strs[1]);
+        data[th] = key;
+    }
+    return data;
 };
 
 int Master::get_slaves_count() const {
@@ -82,13 +120,20 @@ void Master::init_slaves(slave_info &si, const key_ranges& ranges) {
 
         std::string data;
         std::stringstream sdata;
+        key_ranges e{};
         for (int i = 0; i < slave.second; i++) {
             *logger << "    [" << i << "]: " << "{" << ranges[index].first << ", " << ranges[index].second << "}"
                     << std::endl;
             sdata << ranges[index].first << "," << ranges[index].second << std::endl;
+
+            e.push_back({ranges[index].first, ranges[index].second});
+
             index++;
         }
         data = sdata.str();
+
+        //init progress map for this slave
+        this->init_progress_map(slave.first, e);
 
         auto msg = MessageHelper::create_INIT(slave.first + 1, data);
         this->messageGateway->send_to_salve(msg);
@@ -110,14 +155,13 @@ void Master::init_slaves(slave_info &si, const key_ranges& ranges) {
 }
 
 bool Master::init(uint64_t range_begine, uint64_t range_end) {
-    *logger << "Init begins, slaves: " << this->get_slaves_count() << std::endl;
+    *logger << "Init begins, slaves: " << this->get_slaves_count() - 1 << std::endl;
 
     try {
         slave_info slaves = this->collect_slave_info();
 
         int total_threads = 0;
         for (const auto& pair : slaves) {
-            this->progress[pair.first] = key_ranges();
             total_threads += pair.second;
         }
 
@@ -193,17 +237,137 @@ Master::slave_info Master::collect_slave_info() {
         } else
             throw MasterCollectSlaveInfoException{"Response not initialized"};
     }
-    *logger << ">>>>> " << data.size() << std::endl;
     return data;
+}
+
+void Master::kill_all_slaves() {
+    for (int i = 1; i < this->world->size(); i++){
+        auto msg = MessageHelper::create_KILL(i);
+        this->messageGateway->send_to_salve(msg);
+    }
+}
+
+void Master::check_if_slave_done() {
+    for (const auto& slave_info : this->progress) {
+        if (std::find(this->slaves_done.begin(), this->slaves_done.end(), slave_info.first) != this->slaves_done.end())
+            continue;
+
+        bool done = true;
+        for (const auto& slave_range : slave_info.second) {
+            if (slave_range.first != slave_range.second)
+                done = false;
+        }
+        if (done)
+            this->slaves_done.push_back(slave_info.first);
+
+    }
+}
+
+void Master::print_progress() {
+    *logger << "Progress: " << std::endl;
+    for (const auto& e : this->progress) {
+        *logger << "[" << e.first << "]: ";
+        for (const auto& range : e.second) {
+            *logger << "{" << range.first << "/" << range.second << "} ";
+        }
+        *logger << std::endl;
+    }
+}
+
+boost::container::map<int, Master::key_ranges> Master::get_progress() const {
+    return this->progress;
 }
 
 void Master::start() {
     if (!this->inited)
         throw MasterNotInitedException{"TODO"};
 
-//    while (true) {
-//
-//    }
+    this->work = true;
+
+    while (this->work) { boost::this_thread::sleep(boost::posix_time::microseconds(this->refresh_rate * 1000000));
+
+        for (int i = 1; (i < this->world->size() && this->work); i++) {
+
+            try {
+                if (this->slaves_done.size() == this->progress.size()) {
+                    *logger << "ALL SLAVES DONE!" << std::endl;
+                    this->kill_all_slaves();
+                    this->work = false;
+                    break;
+                }else if (std::find(this->slaves_done.begin(), this->slaves_done.end(), (i - 1)) != this->slaves_done.end()) {
+                    continue;
+                }
+
+                *logger << "Sending PING to: " << i - 1 << std::endl;
+
+                auto msg = MessageHelper::create_PING(i);
+                this->messageGateway->send_to_salve(msg);
+                boost::optional<MpiMessage> respond = this->messageGateway->receive_from_slave(i);
+                if (respond.is_initialized()) {
+                    if (respond) {
+
+                        switch ((*respond).event) {
+                            case MpiMessage::Event::FOUND: {
+                                uint64_t key = boost::lexical_cast<uint64_t>((*respond).data);
+
+                                *logger << "~~~ Found key by: " << i - 1 << " - " << key << " ~~~~" << std::endl;
+
+                                this->kill_all_slaves();
+                                this->work = false;
+                            }break;
+
+                            case MpiMessage::Event::CALLBACK: {
+                                if ((*(*respond).respond_to).event == MpiMessage::Event::PING) {
+                                    std::string ping_data = (*respond).data;
+
+                                    if (ping_data.length() == 0)
+                                        throw MasterMissingProgressReportException{"No Progress info, slave: " + std::to_string(i)};
+
+                                    auto update_data = this->convert_ping_report(ping_data);
+                                    this->update_progress(i - 1, update_data);
+
+                                    this->check_if_slave_done();
+
+                                } else {
+
+                                }
+                            }break;
+
+                            default: { ; }
+                        }
+
+
+                    } else
+                        throw MasterMissingProgressReportException{"Slave Response initialized but empty, slave: " + std::to_string(i - 1)};
+                } else
+                    throw MasterMissingProgressReportException{"Slave Response not initialized (probably did not received), slave: " + std::to_string(i - 1)};
+
+            } catch (const GatewayIncorrectRankException& e) {
+                *logger_error << "GatewayIncorrectRankException: " << e.what() << std::endl;
+                this->fault_handle(i, Fault_Type::PING_FAULT);
+            } catch (const GatewayPingException& e) {
+                *logger_error << "GatewayPingException: " << e.what() << std::endl;
+                this->fault_handle(i, Fault_Type::PING_FAULT);
+            } catch (const GatewaySendException& e) {
+                *logger_error << "GatewaySendException: " << e.what() << std::endl;
+                this->fault_handle(i, Fault_Type::SEND_FAULT);
+            } catch (const GatewayReceiveException& e) {
+                *logger_error << "GatewayReceiveException: " << e.what() << std::endl;
+                this->fault_handle(i, Fault_Type::RECEIVE_FAULT);
+            } catch (const GatewayException& e) {
+                *logger_error << "GatewayException: " << e.what() << std::endl;
+                this->fault_handle(i, Fault_Type::OTHER);
+            }
+        }
+
+
+
+        this->print_progress();
+    }
+
+}
+
+void Master::dump_progress() {
 
 }
 

@@ -37,7 +37,7 @@ int main(int argc, const char* argv[]) {
     if (world->rank() == 0) {
 
         try {
-            Master master(world, runParameters.hosts_file, runParameters.progress_file);
+            Master master(world, runParameters.hosts_file);
             if (master.init(runParameters.range_begine, runParameters.range_end))
                 master.start();
         } catch (const MasterException& e) {
@@ -47,7 +47,7 @@ int main(int argc, const char* argv[]) {
     } else {
 
         try {
-            Slave slave(world, runParameters.hosts_file);
+            Slave slave(world, runParameters.hosts_file, runParameters.encrypted_file, runParameters.decrypted_file);
             if (slave.init())
                 slave.start();
         } catch (const SlaveException& e) {

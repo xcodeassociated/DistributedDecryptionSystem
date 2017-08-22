@@ -16,7 +16,7 @@
 #include "Gateway.hpp"
 #include "GatewayExceptions.hpp"
 
-int Gateway::timeout = 100000;
+int Gateway::timeout = 200000;
 boost::atomic<message_id_type> Gateway::id{0};
 
 Gateway::Gateway(boost::shared_ptr<mpi::communicator> _world, const std::string& _hosts_file_name) :
