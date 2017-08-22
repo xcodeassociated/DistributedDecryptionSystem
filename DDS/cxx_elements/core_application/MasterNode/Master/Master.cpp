@@ -240,8 +240,7 @@ bool Master::init(const std::string& file_name) {
         key_ranges ranges = this->load_progress(read_stream.str());
 
         if (total_threads != ranges.size())
-            throw MasterResumeException{"World size is different: " + std::to_string(this->get_world_size() - 1)
-                                        + ", was: " + std::to_string(ranges.size())};
+            throw MasterResumeException{"World size is different: " + std::to_string(this->get_world_size() - 1)};
 
         this->init_slaves(slaves, ranges);
         this->inited = true;
