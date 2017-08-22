@@ -12,8 +12,10 @@
 #include <boost/move/move.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/function.hpp>
+#include <boost/regex.hpp>
 
 #include <sstream>
+#include <fstream>
 #include <algorithm>
 
 #include <Logger.hpp>
@@ -106,7 +108,7 @@ boost::container::map<int, uint64_t> Master::convert_ping_report(const std::stri
     return data;
 };
 
-int Master::get_slaves_count() const {
+int Master::get_world_size() const {
     return this->world->size();
 }
 
@@ -153,7 +155,7 @@ void Master::init_slaves(slave_info &si, const key_ranges& ranges) {
 }
 
 bool Master::init(uint64_t range_begine, uint64_t range_end) {
-    *logger << "Init begins, slaves: " << this->get_slaves_count() - 1 << std::endl;
+    *logger << "Init begins, slaves: " << this->get_world_size() - 1 << std::endl;
 
     try {
         slave_info slaves = this->collect_slave_info();
@@ -202,13 +204,84 @@ bool Master::init(uint64_t range_begine, uint64_t range_end) {
     }
 }
 
+Master::key_ranges Master::load_progress(const std::string& data) {
+    boost::container::vector<std::string> file_lines;
+    boost::split(file_lines, data, boost::is_any_of("\n"));
+    file_lines.pop_back();
+    key_ranges kr;
+    for (const auto& line : file_lines){
+        std::string line_data = line;
+        boost::regex expression{"\\{(.*?)\\/?\\/(.*?)\\}"}; /*   \{(.*?)\/?\/(.*?)\}   */
+        const boost::sregex_iterator end;
+        for (boost::sregex_iterator it(line_data.begin(), line_data.end(), expression); it != end; ++it) {
+            kr.emplace_back(boost::lexical_cast<uint64_t>((*it)[1]), boost::lexical_cast<uint64_t>((*it)[2]));
+        }
+    }
+
+    return kr;
+}
+
 bool Master::init(const std::string& file_name) {
+    *logger << "Init begins from file: " << file_name << ", slaves: " << this->get_world_size() - 1 << std::endl;
+
+    try {
+        slave_info slaves = this->collect_slave_info();
+
+        int total_threads = 0;
+        for (const auto& pair : slaves) {
+            total_threads += pair.second;
+        }
+
+        *logger << "Total threads: " << total_threads << std::endl;
+
+        std::ifstream ifile(this->progress_file, std::ios::binary);
+        std::stringstream read_stream;
+        read_stream << ifile.rdbuf();
+        key_ranges ranges = this->load_progress(read_stream.str());
+
+        if (total_threads != ranges.size())
+            throw MasterResumeException{"World size is different: " + std::to_string(this->get_world_size() - 1)
+                                        + ", was: " + std::to_string(ranges.size())};
+
+        this->init_slaves(slaves, ranges);
+        this->inited = true;
+        return true;
+
+    } catch (const GatewayIncorrectRankException& e) {
+        *logger_error << "GatewayIncorrectRankException: " << e.what() << std::endl;
+
+        return false;
+    } catch (const GatewayPingException& e) {
+        *logger_error << "GatewayPingException: " << e.what() << std::endl;
+
+        return false;
+    } catch (const GatewaySendException& e) {
+        *logger_error << "GatewaySendException: " << e.what() << std::endl;
+
+        return false;
+    } catch (const GatewayException& e) {
+        *logger_error << "GatewayException: " << e.what() << std::endl;
+
+        return false;
+    } catch (const MasterCollectSlaveInfoException& e) {
+        *logger_error << "MasterCollectSlaveInfoException: " << e.what() << std::endl;
+
+        return false;
+    }catch (const MasterException& e) {
+        *logger_error << "MasterException: " << e.what() << std::endl;
+
+        return false;
+    } catch (const std::runtime_error& e) {
+        *logger_error << "Other std::runtime_error: " << e.what() << std::endl;
+
+        return false;
+    }
 
 }
 
 Master::slave_info Master::collect_slave_info() {
     slave_info data{};
-    for (int i = 1; i < this->get_slaves_count(); i++) {
+    for (int i = 1; i < this->get_world_size(); i++) {
         const auto msg = MessageHelper::create_INFO(i);
 
         this->messageGateway->send_to_salve(msg);
@@ -359,16 +432,31 @@ void Master::start() {
         }
 
 
-
         this->print_progress();
     }
 
 }
 
 void Master::dump_progress() {
+    /* [0]: {a, b} ...
+     *  ...
+     * [n]: {n, m} ...
+     * */
 
+    std::ofstream file(this->progress_file);
+    for (const auto& e : this->progress) {
+        file << "[" << e.first << "]: ";
+        for (const auto& range : e.second) {
+            file << "{" << range.first << "/" << range.second << "} ";
+        }
+        file << std::endl;
+    }
+    file.flush();
+    file.close();
+
+    *logger << "Progress dumped to file: " << this->progress_file << std::endl;
 }
 
 void Master::fault_handle(int rank, Master::Fault_Type fault_type) {
-
+    this->dump_progress();
 }

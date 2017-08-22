@@ -22,11 +22,14 @@ namespace RunOptions {
                 ("from", po::value<uint64_t>(), "set key range BEGIN value")
                 ("to", po::value<uint64_t>(), "set key range END value")
                 ("encrypted", po::value<std::string>(), "encrypted file path")
-                ("decrypt", po::value<std::string>(), "decrypted file path");
+                ("decrypt", po::value<std::string>(), "decrypted file path")
+                ("resume", po::value<std::string>(), "resume work from progress file");
 
         po::variables_map vm;
         po::store(po::parse_command_line(argc, argv, desc), vm);
         po::notify(vm);
+
+        bool resume = false;
 
         if (vm.count("help")) {
             std::stringstream ss;
@@ -34,15 +37,22 @@ namespace RunOptions {
             throw IncorrectParameterException{ss.str()};
         }
 
-        if (vm.count("from"))
-            runParameters.range_begine = vm["from"].as<uint64_t>();
-        else {
+        if (vm.count("resume")) {
+            runParameters.progress_file = vm["resume"].as<std::string>();
+            resume = true;
+        }
+
+        if (vm.count("from") | resume) {
+            if (!resume)
+                runParameters.range_begine = vm["from"].as<uint64_t>();
+        } else {
             throw MissingParameterException{"Set min range!"};
         }
 
-        if (vm.count("to"))
-            runParameters.range_end = vm["to"].as<uint64_t>();
-        else {
+        if (vm.count("to") | resume) {
+            if (!resume)
+                runParameters.range_end = vm["to"].as<uint64_t>();
+        } else {
             throw MissingParameterException{"Set max range!"};
         }
 

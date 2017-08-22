@@ -39,4 +39,10 @@ struct MasterMissingProgressReportException : public MasterException {
     }
 };
 
+struct MasterResumeException : public MasterException {
+    MasterResumeException(const std::string& msg) :  MasterException{msg} {
+        ;
+    }
+};
+
 #endif //DDS_MASTEREXCEPTIONS_HPP

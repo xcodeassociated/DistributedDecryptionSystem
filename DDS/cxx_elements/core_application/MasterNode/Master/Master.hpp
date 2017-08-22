@@ -52,7 +52,7 @@ private:
     };
 
     void fault_handle(int, Fault_Type);
-    int get_slaves_count() const;
+    int get_world_size() const;
     slave_info collect_slave_info();
     void init_slaves(slave_info&, const key_ranges&);
     boost::container::map<int, uint64_t> convert_ping_report(const std::string&);
@@ -61,6 +61,7 @@ private:
     key_ranges calculate_range(uint64_t absolute_key_from, uint64_t absolute_key_to, int size) const;
     void kill_all_slaves();
     void check_if_slave_done();
+    key_ranges load_progress(const std::string&);
 
 public:
 

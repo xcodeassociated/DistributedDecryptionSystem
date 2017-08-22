@@ -38,8 +38,18 @@ int main(int argc, const char* argv[]) {
 
         try {
             Master master(world, runParameters.hosts_file);
-            if (master.init(runParameters.range_begine, runParameters.range_end))
-                master.start();
+
+            if (runParameters.progress_file.empty()) {
+
+                if (master.init(runParameters.range_begine, runParameters.range_end))
+                    master.start();
+
+            } else {
+
+                if (master.init(runParameters.progress_file))
+                    master.start();
+
+            }
         } catch (const MasterException& e) {
             std::cerr << e.what() << std::endl;
         }

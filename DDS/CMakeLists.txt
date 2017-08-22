@@ -63,7 +63,7 @@ if (ARM)
     endif()
 
 
-    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system filesystem REQUIRED)
+    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system filesystem regex REQUIRED)
     if(Boost_FOUND)
         include_directories(${Boost_INCLUDE_DIRS})
 
@@ -110,7 +110,7 @@ else()
         message(STATUS "MPI libs: ${MPI_LIBRARIES}")
     endif()
 
-    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system filesystem REQUIRED)
+    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system filesystem regex REQUIRED)
     if(Boost_FOUND)
         include_directories(${Boost_INCLUDE_DIRS})
 
