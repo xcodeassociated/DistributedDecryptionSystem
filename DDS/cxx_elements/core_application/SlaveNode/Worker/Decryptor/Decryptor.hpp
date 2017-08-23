@@ -33,6 +33,7 @@ public:
     }
 
     void worker_process() override;
+    bool decrypt();
 
     boost::container::vector<unsigned char> uint64ToBytes(uint64_t value) noexcept;
     std::string hashString(const std::string& str) noexcept;

@@ -39,7 +39,7 @@ private:
     bool work = false;
     bool inited = false;
 
-    int refresh_rate = 5;
+    int refresh_rate = 3;
 
     boost::container::map<int, key_ranges> progress;
     boost::container::vector<int> slaves_done;
