@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cassert>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>

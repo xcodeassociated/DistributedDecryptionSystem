@@ -23,6 +23,7 @@ protected:
 
     int id = 0;
     bool work = false;
+    bool found = false;
     KeyRange range{0, 0};
     boost::atomic<uint64_t> current_key{0};
     boost::shared_ptr<boost::lockfree::spsc_queue<SysComSTR>> rx = nullptr;
