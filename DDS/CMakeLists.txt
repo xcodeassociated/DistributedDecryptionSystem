@@ -1,10 +1,3 @@
-########################################################################################################################
-## DDS Project CMakeLists.txt - Main app config file
-##
-## TODO: Clean CMakeLists.txt to make it more generic for use without cmake hardcoded env variables
-## TODO: Remove my local ARM CMAKE setup - this is for testing only
-########################################################################################################################
-
 cmake_minimum_required(VERSION 3.5.1)
 project(DDS)
 
@@ -34,102 +27,33 @@ endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules")
 
-if (ARM)
-    message(STATUS "ARCH: arm")
+find_package(MPI REQUIRED)
+if(MPI_FOUND)
+    include_directories(${MPI_INCLUDE_PATH})
 
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/")
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
-
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/")
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/")
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/")
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/arm-linux-gnueabihf/")
-
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/cryptopp/")
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/crypto++/")
-
-    set (BOOST_ROOT "/home/jm/arm-linux-gnueabihf-pi/usr/")
-    set (BOOST_LIBRARYDIR "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf")
-
-    include_directories("/home/jm/arm-linux-gnueabihf-pi/usr/include/")
-
-    find_package(MPI REQUIRED)
-    if(MPI_FOUND)
-        include_directories(${MPI_INCLUDE_PATH})
-
-        message(STATUS "ARM_MPI Found!")
-        message(STATUS "ARM_MPI include: ${MPI_INCLUDE_PATH}")
-        message(STATUS "ARM_MPI libs: ${MPI_LIBRARIES}")
-    endif()
-
-
-    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system filesystem regex REQUIRED)
-    if(Boost_FOUND)
-        include_directories(${Boost_INCLUDE_DIRS})
-
-        message(STATUS "ARM_BOOST Found!")
-        message(STATUS "ARM_Boost version: ${Boost_VERSION}")
-        message(STATUS "ARM_Boost include: ${Boost_INCLUDE_DIRS}")
-        message(STATUS "ARM_Boost libs: ${Boost_INCLUDE_DIRS}")
-    endif()
-
-    find_package(CryptoPP REQUIRED)
-    if (CryptoPP_FOUND)
-        include_directories("${CRYPTOPP_INCLUDE_DIR}")
-
-        message(STATUS "Crypto++ found!")
-        message(STATUS "Crypto++ include: ${CRYPTOPP_INCLUDE_DIR}")
-        message(STATUS "Crypto++ libs: ${CRYPTOPP_LIBRARY}")
-    endif()
-
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/include/openmpi/")
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/openmpi/include/")
-    set (CMAKE_PREFIX_PATH "/home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/openmpi/lib/")
-
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread ")
-
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/home/jm/arm-linux-gnueabihf-pi/lib/")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L/home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/")
-
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ldl -fPIC -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf/openmpi/lib -Wl,--enable-new-dtags -L/usr/lib/arm-linux-gnueabihf/openmpi/lib")
-
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath -Wl,/usr/lib/arm-linux-gnueabihf/")
-
-    # to link shared library when running on cluster
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-rpath,/mpi/DDS")
-
-else()
-    message(STATUS "ARCH: amd64")
-
-    find_package(MPI REQUIRED)
-    if(MPI_FOUND)
-        include_directories(${MPI_INCLUDE_PATH})
-
-        message(STATUS "MPI Found!")
-        message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
-        message(STATUS "MPI libs: ${MPI_LIBRARIES}")
-    endif()
-
-    find_package(Boost COMPONENTS mpi serialization program_options chrono thread system filesystem regex REQUIRED)
-    if(Boost_FOUND)
-        include_directories(${Boost_INCLUDE_DIRS})
-
-        message(STATUS "Boost Found!")
-        message(STATUS "Boost version: ${Boost_VERSION}")
-        message(STATUS "Boost include: ${Boost_INCLUDE_DIRS}")
-        message(STATUS "Boost libs: ${Boost_LIBRARY_DIRS}")
-    endif()
-
-    find_package(CryptoPP REQUIRED)
-    if (CryptoPP_FOUND)
-        include_directories("${CRYPTOPP_INCLUDE_DIR}")
-
-        message(STATUS "Crypto++ found!")
-        message(STATUS "Crypto++ include: ${CRYPTOPP_INCLUDE_DIR}")
-        message(STATUS "Crypto++ libs: ${CRYPTOPP_LIBRARY}")
-    endif()
+    message(STATUS "MPI Found!")
+    message(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
+    message(STATUS "MPI libs: ${MPI_LIBRARIES}")
 endif()
 
+find_package(Boost COMPONENTS mpi serialization program_options chrono thread system filesystem regex REQUIRED)
+if(Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+
+    message(STATUS "Boost Found!")
+    message(STATUS "Boost version: ${Boost_VERSION}")
+    message(STATUS "Boost include: ${Boost_INCLUDE_DIRS}")
+    message(STATUS "Boost libs: ${Boost_LIBRARY_DIRS}")
+endif()
+
+find_package(CryptoPP REQUIRED)
+if (CryptoPP_FOUND)
+    include_directories("${CRYPTOPP_INCLUDE_DIR}")
+
+    message(STATUS "Crypto++ found!")
+    message(STATUS "Crypto++ include: ${CRYPTOPP_INCLUDE_DIR}")
+    message(STATUS "Crypto++ libs: ${CRYPTOPP_LIBRARY}")
+endif()
 
 if (O)
     if (O STREQUAL "0")
@@ -170,48 +94,12 @@ add_subdirectory(cxx_tests)
 set(SOURCE_FILES ${APP_CORE}/main.cpp)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
-if (ARM)
-    target_link_libraries(
-            ${PROJECT_NAME}
-            ${MPI_LIBRARIES}
-            ${Boost_LIBRARIES}
-            ${CRYPTOPP_LIBRARY}
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so
-            /home/jm/arm-linux-gnueabihf-pi/usr/lib/arm-linux-gnueabihf/libhwloc.so.5
-            /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libudev.so.1
-            /home/jm/arm-linux-gnueabihf-pi/lib/arm-linux-gnueabihf/libpthread.so.0
-            RunOptionsLib
-            MasterNodeObject
-            SlaveNodeObject)
-else()
-    target_link_libraries(
-            ${PROJECT_NAME}
-            ${MPI_LIBRARIES}
-            ${Boost_LIBRARIES}
-            ${CRYPTOPP_LIBRARY}
-            RunOptionsLib
-            MasterNodeObject
-            SlaveNodeObject
-            pthread)
-endif()
-
-## post build steps
-if (CP)
-    if (NOT CP STREQUAL "")
-        add_custom_command(TARGET ${PROJECT_NAME}
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> ${CP}
-
-                ## Copy also SHARED LIBs
-                COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/MasterNode/*.so ${CP}
-                COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/*.so ${CP}
-                COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/common/*.so ${CP}
-                COMMAND ${CMAKE_COMMAND} -E
-                    copy ${CMAKE_CURRENT_BINARY_DIR}/cxx_elements/core_application/SlaveNode/Worker/*.so ${CP}
-                )
-
-    endif()
-endif()
+target_link_libraries(
+        ${PROJECT_NAME}
+        ${MPI_LIBRARIES}
+        ${Boost_LIBRARIES}
+        ${CRYPTOPP_LIBRARY}
+        RunOptionsLib
+        MasterNodeObject
+        SlaveNodeObject
+        pthread)
