@@ -457,5 +457,24 @@ void Master::dump_progress() {
 }
 
 void Master::fault_handle(int rank, Master::Fault_Type fault_type) {
+    switch (fault_type) {
+        case Fault_Type::PING_FAULT: {
+            *logger_error << "Handling PING fault of slave: " << rank << std::endl;
+        }break;
+
+        case Fault_Type::RECEIVE_FAULT: {
+            *logger_error << "Handling RECEIVE fault of slave: " << rank << std::endl;
+        }break;
+
+        case Fault_Type::SEND_FAULT: {
+            *logger_error << "Handling SEND fault of slave: " << rank << std::endl;
+        }break;
+
+        case Fault_Type::OTHER: {
+            *logger_error << "Handling some other fault of slave: " << rank << std::endl;
+        }break;
+    }
     this->dump_progress();
+    *logger_error << "Exit with error code: " << EXIT_FAILURE << std::endl;
+    exit(EXIT_FAILURE);
 }
