@@ -89,7 +89,6 @@ include_directories(${CXX})
 add_subdirectory(${CXX}/common)
 add_subdirectory(${APP_CORE}/MasterNode)
 add_subdirectory(${APP_CORE}/SlaveNode)
-add_subdirectory(cxx_tests)
 
 set(SOURCE_FILES ${APP_CORE}/main.cpp)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
