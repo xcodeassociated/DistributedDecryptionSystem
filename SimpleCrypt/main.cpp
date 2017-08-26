@@ -37,8 +37,7 @@ std::string hashString(const std::string& str){
     return result;
 }
 
-std::vector<unsigned char> uint64ToBytes(uint64_t value)
-{
+std::vector<unsigned char> uint64ToBytes(uint64_t value) {
     std::vector<unsigned char> result(8, 0x00);
     result.push_back((value >> 56) & 0xFF);
     result.push_back((value >> 48) & 0xFF);
@@ -52,10 +51,6 @@ std::vector<unsigned char> uint64ToBytes(uint64_t value)
 }
 
 int main(int argc, const char* argv[]) {
-    std::cout << std::boolalpha; std::ofstream os("bin.txt", std::ios::binary);
-    os << "test test" << std::endl << "test test" << std::endl;
-    os.flush();
-    os.close();
 
     po::options_description desc("SimpleCrypt Options");
     desc.add_options()
@@ -64,8 +59,7 @@ int main(int argc, const char* argv[]) {
             ("encrypt", po::value<std::string>(), "Encrypts file")
             ("decrypt", po::value<std::string>(), "Decrypts file")
             ("output", po::value<std::string>(), "Output file")
-            ("key", po::value<uint64_t>(), "AES Key file - int value")
-            ;
+            ("key", po::value<uint64_t>(), "AES Key file - int value");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
