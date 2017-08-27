@@ -4,10 +4,7 @@ project(DDS)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "Source DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
-option(ARM "Build for armhf" OFF)
 option(O "Optimalize" 0)
-option(CP "copy exec to given location" "")
-option(GTEST_DIR "GoogleTest lib directory")
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
