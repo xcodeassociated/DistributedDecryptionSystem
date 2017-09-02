@@ -102,11 +102,11 @@ void Slave::respond_collect_info() {
                 this->messageGateway->send_to_master(respond_msg);
 
             } else
-                throw SlaveNotMachingOperationRequestException{""};
+                throw SlaveNotMachingOperationRequestException{"Incorrect message event"};
         } else
-            throw SlaveRequestException{""};
+            throw SlaveRequestException{"Message initialized, but empty"};
     } else
-        throw SlaveRequestNotInitializedException{""};
+        throw SlaveRequestNotInitializedException{"Message not initialized"};
 }
 
 Slave::key_ranges Slave::respond_collect_ranges() {
@@ -124,11 +124,11 @@ Slave::key_ranges Slave::respond_collect_ranges() {
                 return this->convert_init_data(data);
 
             } else
-                throw SlaveNotMachingOperationRequestException{""};
+                throw SlaveNotMachingOperationRequestException{"Incorrect message event"};
         } else
-            throw SlaveRequestException{""};
+            throw SlaveRequestException{"Message initialized, but empty"};
     } else
-        throw SlaveRequestNotInitializedException{""};
+        throw SlaveRequestNotInitializedException{"Message not initialized"};
 }
 
 bool Slave::init() {
@@ -164,7 +164,7 @@ bool Slave::init() {
 
 void Slave::start(){
     if (!inited)
-        throw SlaveNotInitedException{""};
+        throw SlaveNotInitedException{"Slave has not been initialized"};
 
     this->init_and_start_workers();
 
@@ -219,13 +219,13 @@ void Slave::start(){
                         }break;
 
                         default: {
-                            throw SlaveNotMachingOperationRequestException{""};
+                            throw SlaveNotMachingOperationRequestException{"Unknow MpiMessage event type"};
                         }
                     }
 
 
                 } else
-                    throw SlaveRequestException{""}; // ?? continue ??
+                    throw SlaveRequestException{"Received data was initialized but was empty"};
             } else
                 continue;
 

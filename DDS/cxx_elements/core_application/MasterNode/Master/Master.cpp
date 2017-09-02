@@ -72,7 +72,7 @@ void Master::update_progress(int rank, const boost::container::map<int, uint64_t
     assert(kranges.size() == info.size());
 
     for (const auto& pair : info) {
-        kranges[pair.first] = {pair.second, kranges[pair.first].second}; // move r-begin to new value, r-end stays still
+        kranges[pair.first] = {pair.second, kranges[pair.first].second};
     }
 }
 
@@ -141,13 +141,13 @@ void Master::init_slaves(slave_info &si, const key_ranges& ranges) {
         if (respond.is_initialized()) {
             if (respond) {
                 if ((*respond).event != MpiMessage::Event::CALLBACK)
-                    throw MasterCallbackException{"TODO1"};
+                    throw MasterCallbackException{"Incorrect callback event"};
 
                 if (!(*respond).respond_to)
-                    throw MasterCallbackException{"TODO2"};
+                    throw MasterCallbackException{"Missing response"};
 
                 if ((*(*respond).respond_to).message_id != msg.id)
-                    throw MasterCallbackException{"TODO3"};
+                    throw MasterCallbackException{"Not matching response message id"};
             }
         }
 
@@ -350,11 +350,14 @@ boost::container::map<int, Master::key_ranges> Master::get_progress() const {
 
 void Master::start() {
     if (!this->inited)
-        throw MasterNotInitedException{"TODO"};
+        throw MasterNotInitedException{"Master Not initialized"};
+
+    if (this->work)
+        throw MasterException{"Already running"};
 
     this->work = true;
 
-    while (this->work) { boost::this_thread::sleep(boost::posix_time::microseconds(this->refresh_rate * 1000000));
+    while (this->work) { boost::this_thread::sleep(boost::posix_time::seconds(this->refresh_rate));
 
         for (int i = 1; (i < this->world->size() && this->work); i++) {
 
@@ -399,7 +402,7 @@ void Master::start() {
                                     this->check_if_slave_done();
 
                                 } else {
-
+                                    throw MasterMissingProgressReportException{"Incorrect message callback"};
                                 }
                             }break;
 
@@ -474,6 +477,7 @@ void Master::fault_handle(int rank, Master::Fault_Type fault_type) {
             *logger_error << "Handling some other fault of slave: " << rank << std::endl;
         }break;
     }
+    this->work = false;
     this->dump_progress();
     *logger_error << "Exit with error code: " << EXIT_FAILURE << std::endl;
     exit(EXIT_FAILURE);
