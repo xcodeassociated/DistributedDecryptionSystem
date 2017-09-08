@@ -84,6 +84,23 @@ void Master::init_progress_map(int rank, const boost::container::vector<std::pai
     this->progress[rank] = boost::move(kr);
 }
 
+Master::key_ranges Master::load_progress(const std::string& data) {
+    boost::container::vector<std::string> file_lines;
+    boost::split(file_lines, data, boost::is_any_of("\n"));
+    file_lines.pop_back();
+    key_ranges k_ranges;
+    for (const auto& line : file_lines){
+        std::string line_data = line;
+        boost::regex expression{"\\{(.*?)\\/?\\/(.*?)\\}"}; /*   \{(.*?)\/?\/(.*?)\}   */
+        const boost::sregex_iterator end;
+        for (boost::sregex_iterator it(line_data.begin(), line_data.end(), expression); it != end; ++it) {
+            k_ranges.emplace_back(boost::lexical_cast<uint64_t>((*it)[1]), boost::lexical_cast<uint64_t>((*it)[2]));
+        }
+    }
+
+    return k_ranges;
+}
+
 boost::container::map<int, uint64_t> Master::convert_ping_report(const std::string& str) {
     //Ping format:
     //0:<key>
@@ -137,16 +154,16 @@ void Master::init_slaves(slave_info &si, const key_ranges& ranges) {
 
         auto msg = MessageHelper::create_INIT(slave.first + 1, data);
         this->messageGateway->send_to_salve(msg);
-        boost::optional<MpiMessage> respond = this->messageGateway->receive_from_slave(slave.first + 1);
-        if (respond.is_initialized()) {
-            if (respond) {
-                if ((*respond).event != MpiMessage::Event::CALLBACK)
+        boost::optional<MpiMessage> response = this->messageGateway->receive_from_slave(slave.first + 1);
+        if (response.is_initialized()) {
+            if (response) {
+                if ((*response).event != MpiMessage::Event::CALLBACK)
                     throw MasterCallbackException{"Incorrect callback event"};
 
-                if (!(*respond).respond_to)
+                if (!(*response).respond_to)
                     throw MasterCallbackException{"Missing response"};
 
-                if ((*(*respond).respond_to).message_id != msg.id)
+                if ((*(*response).respond_to).message_id != msg.id)
                     throw MasterCallbackException{"Not matching response message id"};
             }
         }
@@ -204,22 +221,7 @@ bool Master::init(uint64_t range_begine, uint64_t range_end) {
     }
 }
 
-Master::key_ranges Master::load_progress(const std::string& data) {
-    boost::container::vector<std::string> file_lines;
-    boost::split(file_lines, data, boost::is_any_of("\n"));
-    file_lines.pop_back();
-    key_ranges kr;
-    for (const auto& line : file_lines){
-        std::string line_data = line;
-        boost::regex expression{"\\{(.*?)\\/?\\/(.*?)\\}"}; /*   \{(.*?)\/?\/(.*?)\}   */
-        const boost::sregex_iterator end;
-        for (boost::sregex_iterator it(line_data.begin(), line_data.end(), expression); it != end; ++it) {
-            kr.emplace_back(boost::lexical_cast<uint64_t>((*it)[1]), boost::lexical_cast<uint64_t>((*it)[2]));
-        }
-    }
 
-    return kr;
-}
 
 bool Master::init(const std::string& file_name) {
     *logger << "Init begins from file: " << file_name << ", slaves: " << this->get_world_size() - 1 << std::endl;
@@ -284,22 +286,22 @@ Master::slave_info Master::collect_slave_info() {
         const auto msg = MessageHelper::create_INFO(i);
 
         this->messageGateway->send_to_salve(msg);
-        boost::optional<MpiMessage> respond = this->messageGateway->receive_from_slave(i);
-        if (respond.is_initialized()) {
-            if (respond) {
-                if ((*respond).event != MpiMessage::Event::CALLBACK)
+        boost::optional<MpiMessage> response = this->messageGateway->receive_from_slave(i);
+        if (response.is_initialized()) {
+            if (response) {
+                if ((*response).event != MpiMessage::Event::CALLBACK)
                     throw MasterCallbackException{"TODO"};
 
-                if (!(*respond).respond_to)
+                if (!(*response).respond_to)
                     throw MasterCallbackException{"TODO"};
 
-                if ((*(*respond).respond_to).message_id != msg.id)
+                if ((*(*response).respond_to).message_id != msg.id)
                     throw MasterCallbackException{"TODO"};
 
-                std::string tmp = (*respond).data;
+                std::string tmp = (*response).data;
                 int threads = std::atoi(tmp.c_str());
 
-                *logger << "Received info from: [" << (*respond).sender << "]:  " << threads << std::endl;
+                *logger << "Received info from: [" << (*response).sender << "]:  " << threads << std::endl;
 
                 data[i-1] = threads;
             } else
@@ -375,13 +377,13 @@ void Master::start() {
 
                 auto msg = MessageHelper::create_PING(i);
                 this->messageGateway->send_to_salve(msg);
-                boost::optional<MpiMessage> respond = this->messageGateway->receive_from_slave(i);
-                if (respond.is_initialized()) {
-                    if (respond) {
+                boost::optional<MpiMessage> response = this->messageGateway->receive_from_slave(i);
+                if (response.is_initialized()) {
+                    if (response) {
 
-                        switch ((*respond).event) {
+                        switch ((*response).event) {
                             case MpiMessage::Event::FOUND: {
-                                uint64_t key = boost::lexical_cast<uint64_t>((*respond).data);
+                                uint64_t key = boost::lexical_cast<uint64_t>((*response).data);
 
                                 *logger << "~~~ Found key by: " << i - 1 << " - " << key << " ~~~~" << std::endl;
 
@@ -390,8 +392,8 @@ void Master::start() {
                             }break;
 
                             case MpiMessage::Event::CALLBACK: {
-                                if ((*(*respond).respond_to).event == MpiMessage::Event::PING) {
-                                    std::string ping_data = (*respond).data;
+                                if ((*(*response).respond_to).event == MpiMessage::Event::PING) {
+                                    std::string ping_data = (*response).data;
 
                                     if (ping_data.length() == 0)
                                         throw MasterMissingProgressReportException{"No Progress info, slave: " + std::to_string(i)};

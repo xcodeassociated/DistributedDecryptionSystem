@@ -75,12 +75,12 @@ void Slave::init_and_start_workers() {
 
         auto ef = this->encrypted_file, df = this->decrypted_file;
         auto worker_thread = [&range, ef, df, i, rx, tx] {
-            boost::shared_ptr<Decryptor> dptr = boost::make_shared<Decryptor>(rx, tx);
+            Decryptor decryptor(rx, tx);
             uint64_t rbegin = range.first;
             uint64_t rend = range.second;
             KeyRange kr = KeyRange{rbegin, rend};
-            dptr->init(i, kr, ef, df);
-            dptr->start();
+            decryptor.init(i, kr, ef, df);
+            decryptor.start();
         };
         boost::shared_ptr<boost::thread> worker_thread_ptr = boost::make_shared<boost::thread>(worker_thread);
         this->thread_array.push_back(worker_thread_ptr);
@@ -98,8 +98,8 @@ void Slave::respond_collect_info() {
             if ((*request).event == MpiMessage::Event::INFO) {
 
                 int threads = this->get_available_threads();
-                MpiMessage respond_msg = SlaveMessageHelper::create_INFO_CALLBACK(this->rank, std::to_string(threads), (*request).id);
-                this->messageGateway->send_to_master(respond_msg);
+                MpiMessage response_msg = SlaveMessageHelper::create_INFO_CALLBACK(this->rank, std::to_string(threads), (*request).id);
+                this->messageGateway->send_to_master(response_msg);
 
             } else
                 throw SlaveNotMachingOperationRequestException{"Incorrect message event"};
@@ -118,8 +118,8 @@ Slave::key_ranges Slave::respond_collect_ranges() {
                 std::string data = (*request).data;
                 *logger << "Received ranges: " << data << std::endl;
 
-                MpiMessage respond_msg = SlaveMessageHelper::create_INIT_CALLBACK(this->rank, (*request).id);
-                this->messageGateway->send_to_master(respond_msg);
+                MpiMessage response_msg = SlaveMessageHelper::create_INIT_CALLBACK(this->rank, (*request).id);
+                this->messageGateway->send_to_master(response_msg);
 
                 return this->convert_init_data(data);
 

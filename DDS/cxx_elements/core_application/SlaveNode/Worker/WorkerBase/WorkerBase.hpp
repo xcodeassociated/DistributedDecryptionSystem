@@ -44,9 +44,6 @@ public:
 
     virtual ~WorkerBase() = default;
 
-    virtual uint64_t get_current_key() {
-        return this->current_key;
-    }
 };
 
 
