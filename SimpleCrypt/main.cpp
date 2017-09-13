@@ -98,8 +98,8 @@ int main(int argc, const char* argv[]) {
         }
         std::cout << std::dec << std::endl;
 
-        byte iv[ CryptoPP::AES::BLOCKSIZE ];
-        memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
+        byte keyArray[ CryptoPP::AES::BLOCKSIZE ];
+        memset(keyArray, 0x00, CryptoPP::AES::BLOCKSIZE);
 
         std::ifstream file_stream(file_name, std::ios::binary);
         std::stringstream read_stream;
@@ -112,19 +112,19 @@ int main(int argc, const char* argv[]) {
         std::string sha1 = ::hashString(plaintext);
         std::cout << "Plain Text sha1: " << sha1 << std::endl;
 
-        CryptoPP::AES::Encryption aesEncryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
-        CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEncryption( aesEncryption, iv );
+        CryptoPP::AES::Encryption encryption_engine(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
+        CryptoPP::CBC_Mode_ExternalCipher::Encryption cbc_mode_encryption(encryption_engine, keyArray);
 
-        std::string ciphertext;
-        CryptoPP::StreamTransformationFilter stfEncryptor(cbcEncryption, new CryptoPP::StringSink( ciphertext ) );
-        stfEncryptor.Put( reinterpret_cast<const unsigned char*>( plaintext.c_str() ), plaintext.length() + 1 );
-        stfEncryptor.MessageEnd();
+        std::string encrypted_text = "";
+        CryptoPP::StreamTransformationFilter st_filter(cbc_mode_encryption, new CryptoPP::StringSink(encrypted_text));
+        st_filter.Put(reinterpret_cast<const unsigned char*>(plaintext.c_str()), plaintext.length() + 1);
+        st_filter.MessageEnd();
 
-        std::cout << "Cipher Text size: " << ciphertext.size() << " bytes" << std::endl;
+        std::cout << "Cipher Text size: " << encrypted_text.size() << " bytes" << std::endl;
         std::cout << "Cipher Text data: ";
         std::stringstream ss;
-        for( int i = 0; i < ciphertext.size(); i++ ) {
-            ss << "0x" << std::hex << (0xFF & static_cast<byte>(ciphertext[i])) << " ";
+        for( int i = 0; i < encrypted_text.size(); i++ ) {
+            ss << "0x" << std::hex << (0xFF & static_cast<byte>(encrypted_text[i])) << " ";
         }
         std::cout << ss.str() << std::endl;
 
@@ -132,7 +132,7 @@ int main(int argc, const char* argv[]) {
             std::string output = vm["output"].as<std::string>();
             std::cout << "Saving file: " << output << std::endl;
             std::ofstream os(output, std::ios::binary);
-            os << sha1 << std::endl << ciphertext << std::endl;
+            os << sha1 << std::endl << encrypted_text << std::endl;
             os.flush();
             os.close();
         }
@@ -160,8 +160,8 @@ int main(int argc, const char* argv[]) {
         }
         std::cout << std::dec <<std::endl;
 
-        byte iv[CryptoPP::AES::BLOCKSIZE];
-        memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
+        byte keyArray[CryptoPP::AES::BLOCKSIZE];
+        memset(keyArray, 0x00, CryptoPP::AES::BLOCKSIZE);
 
         std::ifstream file_stream(file_name, std::ios::binary);
         std::stringstream read_stream;
@@ -182,22 +182,22 @@ int main(int argc, const char* argv[]) {
         std::cout << "sha1: " << sha1 << std::endl;
         std::cout << "ciphertext: " << ciphertext << std::endl;
 
-        CryptoPP::AES::Decryption aesDecryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
-        CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv);
+        CryptoPP::AES::Decryption decryption_engine(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
+        CryptoPP::CBC_Mode_ExternalCipher::Decryption cbc_mode_decryption(decryption_engine, keyArray);
 
         try {
-            std::string decryptedtext;
-            CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decryptedtext));
-            stfDecryptor.Put(reinterpret_cast<const unsigned char *>( ciphertext.c_str()), ciphertext.size());
-            stfDecryptor.MessageEnd();
+            std::string decrypted_text = "";
+            CryptoPP::StreamTransformationFilter st_filter(cbc_mode_decryption, new CryptoPP::StringSink(decrypted_text));
+            st_filter.Put(reinterpret_cast<const unsigned char *>(ciphertext.c_str()), ciphertext.size());
+            st_filter.MessageEnd();
 
-            if (decryptedtext.back() == '\0')
-                decryptedtext.pop_back();
+            if (decrypted_text.back() == '\0')
+                decrypted_text.pop_back();
 
-            std::cout << "Decrypted size: " << decryptedtext.size() << std::endl;
+            std::cout << "Decrypted size: " << decrypted_text.size() << std::endl;
 
-            std::cout << "Decrypted: " << decryptedtext << std::endl;
-            std::string decrypted_sha = ::hashString(decryptedtext);
+            std::cout << "Decrypted: " << decrypted_text << std::endl;
+            std::string decrypted_sha = ::hashString(decrypted_text);
             std::cout << "decrypted sha1: " << decrypted_sha << std::endl;
 
             if (decrypted_sha == sha1)
@@ -209,7 +209,7 @@ int main(int argc, const char* argv[]) {
                 std::string output = vm["output"].as<std::string>();
                 std::cout << "Saving file: " << output << std::endl;
                 std::ofstream os(output, std::ios::binary);
-                os << decryptedtext;
+                os << decrypted_text;
                 os.flush();
                 os.close();
             }

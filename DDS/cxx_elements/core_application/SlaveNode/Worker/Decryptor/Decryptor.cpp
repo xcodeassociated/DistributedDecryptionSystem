@@ -111,28 +111,28 @@ bool Decryptor::decrypt() {
     assert(key_bytes.size() == CryptoPP::AES::DEFAULT_KEYLENGTH);
     byte* key = key_bytes.data();
 
-    byte iv[CryptoPP::AES::BLOCKSIZE];
-    memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
+    byte keyArray[CryptoPP::AES::BLOCKSIZE];
+    memset(keyArray, 0x00, CryptoPP::AES::BLOCKSIZE);
 
-    CryptoPP::AES::Decryption aesDecryption(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
-    CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv);
+    CryptoPP::AES::Decryption decryption_engine(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
+    CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(decryption_engine, keyArray);
 
     try {
-        std::string decryptedtext;
-        CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decryptedtext));
-        stfDecryptor.Put(reinterpret_cast<const unsigned char *>(this->encryptd_data.c_str()), this->encryptd_data.size());
-        stfDecryptor.MessageEnd();
+        std::string decrypted_text = "";
+        CryptoPP::StreamTransformationFilter st_filter(cbcDecryption, new CryptoPP::StringSink(decrypted_text));
+        st_filter.Put(reinterpret_cast<const unsigned char *>(this->encryptd_data.c_str()), this->encryptd_data.size());
+        st_filter.MessageEnd();
 
-        if (decryptedtext.back() == '\0')
-            decryptedtext.pop_back();
+        if (decrypted_text.back() == '\0')
+            decrypted_text.pop_back();
 
-        std::string decrypted_sha = this->hashString(decryptedtext);
+        std::string decrypted_sha = this->hashString(decrypted_text);
 
         if (decrypted_sha == this->encrypted_sha) {
 
             if (!this->decrypted_file_path.empty()){
                 std::ofstream os(this->decrypted_file_path, std::ios::binary);
-                os << decryptedtext;
+                os << decrypted_text;
                 os.flush();
                 os.close();
             }
@@ -142,6 +142,8 @@ bool Decryptor::decrypt() {
 
 
     } catch (const CryptoPP::InvalidCiphertext &e) {
+        ;
+    } catch (...) {
         ;
     }
 
