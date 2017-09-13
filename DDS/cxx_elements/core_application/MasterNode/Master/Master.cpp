@@ -17,6 +17,8 @@
 #include <sstream>
 #include <fstream>
 #include <algorithm>
+#include <signal.h>
+#include <unistd.h>
 
 #include <Logger.hpp>
 #include "MasterMessageHelper.hpp"
@@ -482,5 +484,5 @@ void Master::fault_handle(int rank, Master::Fault_Type fault_type) {
     this->work = false;
     this->dump_progress();
     *logger_error << "Exit with error code: " << EXIT_FAILURE << std::endl;
-    exit(EXIT_FAILURE);
+    kill(getpid(), SIGKILL);
 }
