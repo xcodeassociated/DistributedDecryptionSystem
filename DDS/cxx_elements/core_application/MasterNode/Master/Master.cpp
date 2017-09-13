@@ -292,13 +292,13 @@ Master::slave_info Master::collect_slave_info() {
         if (response.is_initialized()) {
             if (response) {
                 if ((*response).event != MpiMessage::Event::CALLBACK)
-                    throw MasterCallbackException{"TODO"};
+                    throw MasterCallbackException{"Incorrect Callback"};
 
                 if (!(*response).respond_to)
-                    throw MasterCallbackException{"TODO"};
+                    throw MasterCallbackException{"Callback not inited"};
 
                 if ((*(*response).respond_to).message_id != msg.id)
-                    throw MasterCallbackException{"TODO"};
+                    throw MasterCallbackException{"Incorrect message id for Callback"};
 
                 std::string tmp = (*response).data;
                 int threads = std::atoi(tmp.c_str());
@@ -484,5 +484,6 @@ void Master::fault_handle(int rank, Master::Fault_Type fault_type) {
     this->work = false;
     this->dump_progress();
     *logger_error << "Exit with error code: " << EXIT_FAILURE << std::endl;
-    kill(getpid(), SIGKILL);
+
+    exit(EXIT_FAILURE);
 }

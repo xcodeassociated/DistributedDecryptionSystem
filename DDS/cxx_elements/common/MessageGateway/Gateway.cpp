@@ -16,7 +16,7 @@
 #include "Gateway.hpp"
 #include "GatewayExceptions.hpp"
 
-int Gateway::timeout = 40000;
+int Gateway::timeout = 3000000;
 boost::atomic<message_id_type> Gateway::id{0};
 
 Gateway::Gateway(boost::shared_ptr<mpi::communicator> _world, const std::string& _hosts_file_name) :
@@ -96,17 +96,17 @@ void Gateway::ping(const int rank){
 }
 
 void Gateway::send(const int rank, const int tag, const MpiMessage &msg){
-    ping(rank);
+    //ping(rank);
     _send(rank, tag, msg);
 }
 
 boost::optional<MpiMessage> Gateway::receive(const int rank, const int tag) {
-    ping(rank);
+    //ping(rank);
     return _receive(rank, tag);
 }
 
 boost::optional<MpiMessage> Gateway::send_and_receive(const int rank, const int tag, const MpiMessage &msg) {
-    ping(rank);
+    //ping(rank);
     _send(rank, tag, msg);
     return _receive(rank, tag);
 }
