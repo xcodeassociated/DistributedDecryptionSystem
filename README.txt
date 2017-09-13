@@ -1,4 +1,4 @@
-Pliki warte w tym archiwum są częścią składową projektu wykonanego na potrzeby pracy licencjackiej na wydziale Fizyki, Astronomii i Informatyki Stosowanej Uniwersytetu Jagiellońskiego.
+Pliki zawarte w tym archiwum są częścią składową projektu wykonanego na potrzeby pracy licencjackiej na wydziale Fizyki, Astronomii i Informatyki Stosowanej Uniwersytetu Jagiellońskiego.
 Pracę wykonał Janusz Majchrzak, student 3 roku kierunku: Informatyka.
 
 Projekt programistyczny składa się z dwóch aplikacji. Pierwsza w folderze “DDS” zajmuje się przeprowadzaniem procesu brute-force w systemie rozproszonym na zaszyfrowanym uprzednio pliku przez aplikację znajdującą się w folderze “SimpleCrypt”. 
