@@ -223,7 +223,7 @@ bool Master::init(const std::string& file_name) {
 
         *logger << "Total threads: " << total_threads << std::endl;
 
-        std::ifstream ifile(this->progress_file, std::ios::binary);
+        std::ifstream ifile(file_name, std::ios::binary);
         std::stringstream read_stream;
         read_stream << ifile.rdbuf();
         key_ranges ranges = this->load_progress(read_stream.str());
