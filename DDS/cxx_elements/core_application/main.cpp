@@ -62,6 +62,7 @@ int main(int argc, const char* argv[]) {
                     master.start();
 
             }
+
         } catch (const MasterException& e) {
             std::cerr << e.what() << std::endl;
             return EXIT_FAILURE;
@@ -71,8 +72,10 @@ int main(int argc, const char* argv[]) {
 
         try {
             Slave slave(world, runParameters.encrypted_file, runParameters.decrypted_file);
+
             if (slave.init())
                 slave.start();
+
         } catch (const SlaveException& e) {
             std::cerr << e.what() << std::endl;
             return EXIT_FAILURE;

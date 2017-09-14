@@ -30,7 +30,8 @@ namespace Files {
         open(parameters.progress_dump_file);
 
         if (!parameters.progress_file.empty())
-            open(parameters.progress_file);
+            if (file_empty(parameters.encrypted_file))
+                throw FileEmptyException{"File: " + parameters.encrypted_file + " empty"};
     }
 
 }
