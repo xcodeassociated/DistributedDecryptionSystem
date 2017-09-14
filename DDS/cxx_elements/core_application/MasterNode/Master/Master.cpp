@@ -37,6 +37,10 @@ Master::Master(boost::shared_ptr<mpi::communicator> _world, std::string _progres
     ;
 }
 
+Master::~Master() {
+    File::remove(this->progress_file);
+}
+
 Master::key_ranges Master::calculate_range(uint64_t absolute_key_from, uint64_t absolute_key_to, int size) const {
     assert(absolute_key_from < absolute_key_to);
     uint64_t range = absolute_key_to - absolute_key_from;
@@ -337,7 +341,6 @@ void Master::start() {
                 *logger << "ALL SLAVES DONE!" << std::endl;
                 this->kill_all_slaves();
                 this->work = false;
-
             } else if (std::find(this->slaves_done.begin(), this->slaves_done.end(), (i - 1)) !=
                        this->slaves_done.end()) {
                 continue;

@@ -57,6 +57,7 @@ private:
 public:
 
     Master(boost::shared_ptr<mpi::communicator>, std::string);
+    ~Master();
     bool init(uint64_t, uint64_t);
     bool init(const std::string&);
 

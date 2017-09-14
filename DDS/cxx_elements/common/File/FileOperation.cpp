@@ -12,6 +12,10 @@ namespace File {
         boost::filesystem::rename(old_name, new_name);
     }
 
+    void remove(const std::string& file) {
+        boost::filesystem::remove(file);
+    }
+
     std::string get_file_path(const std::string& file) {
         boost::filesystem::path p(file);
         return p.parent_path().string();
