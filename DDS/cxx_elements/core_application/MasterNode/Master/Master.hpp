@@ -33,7 +33,7 @@ private:
     boost::shared_ptr<LoggerError> logger_error = nullptr;
     boost::shared_ptr<mpi::communicator> world = nullptr;
     std::string hosts_file = "";
-    std::string progress_file = "DDS_Progress.txt";
+    std::string progress_file = "";
     boost::shared_ptr<MasterGateway> messageGateway = nullptr;
 
     bool work = false;
@@ -65,7 +65,7 @@ private:
 
 public:
 
-    Master(boost::shared_ptr<mpi::communicator>, std::string);
+    Master(boost::shared_ptr<mpi::communicator>, std::string, std::string);
     bool init(uint64_t, uint64_t);
     bool init(const std::string&);
 

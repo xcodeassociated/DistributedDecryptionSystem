@@ -45,4 +45,10 @@ struct MasterResumeException : public MasterException {
     }
 };
 
+struct MasterFileOperationException : public MasterException {
+    MasterFileOperationException(const std::string& msg) :  MasterException{msg} {
+        ;
+    }
+};
+
 #endif //DDS_MASTEREXCEPTIONS_HPP

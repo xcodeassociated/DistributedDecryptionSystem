@@ -27,11 +27,12 @@
 #include "MasterExceptions.hpp"
 #include "Master.hpp"
 
-Master::Master(boost::shared_ptr<mpi::communicator> _world, std::string _hosts_file) :
+Master::Master(boost::shared_ptr<mpi::communicator> _world, std::string _hosts_file, std::string _progress_file) :
         world{_world},
         logger{Logger::instance("Master")},
         logger_error{LoggerError::instance("Master_ERROR")},
         hosts_file{_hosts_file},
+        progress_file{_progress_file},
         messageGateway(new MasterGateway(this->world, hosts_file))  {
     ;
 }
@@ -450,6 +451,9 @@ void Master::dump_progress() {
      * */
 
     std::ofstream file(this->progress_file);
+    if (!file)
+        throw MasterFileOperationException{"Cannot open progress file"};
+
     for (const auto& e : this->progress) {
         file << "[" << e.first << "]: ";
         for (const auto& range : e.second) {

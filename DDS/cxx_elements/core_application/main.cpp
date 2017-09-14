@@ -37,7 +37,7 @@ int main(int argc, const char* argv[]) {
     if (world->rank() == 0) {
 
         try {
-            Master master(world, runParameters.hosts_file);
+            Master master(world, runParameters.hosts_file, runParameters.progress_dump_file);
 
             if (runParameters.progress_file.empty()) {
 

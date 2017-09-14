@@ -14,6 +14,7 @@ struct RunParameters {
     std::string encrypted_file = "";
     std::string decrypted_file = "";
     std::string progress_file = "";
+    std::string progress_dump_file = "DDS_Progress.txt";
     std::string hosts_file = "";
 };
 

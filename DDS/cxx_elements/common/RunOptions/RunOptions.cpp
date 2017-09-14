@@ -23,6 +23,7 @@ namespace RunOptions {
                 ("to", po::value<uint64_t>(), "set key range END value")
                 ("encrypted", po::value<std::string>(), "encrypted file path")
                 ("decrypt", po::value<std::string>(), "decrypted file path")
+                ("progress_dump", po::value<std::string>(), "file that holds progress dump")
                 ("resume", po::value<std::string>(), "resume work from progress file");
 
         po::variables_map vm;
@@ -64,6 +65,10 @@ namespace RunOptions {
 
         if (vm.count("decrypt")) {
             runParameters.decrypted_file = vm["decrypt"].as<std::string>();
+        }
+
+        if (vm.count("progress_dump")) {
+            runParameters.progress_dump_file = vm["progress_dump"].as<std::string>();
         }
 
         return runParameters;
