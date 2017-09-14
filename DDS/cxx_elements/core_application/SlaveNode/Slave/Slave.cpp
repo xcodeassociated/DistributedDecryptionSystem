@@ -25,12 +25,11 @@
 #include "SlaveExceptions.hpp"
 #include "Slave.hpp"
 
-Slave::Slave(boost::shared_ptr<mpi::communicator> _world, std::string _hosts_file, std::string _encrypted_file, std::string _decrypted_file) :
+Slave::Slave(boost::shared_ptr<mpi::communicator> _world, std::string _encrypted_file, std::string _decrypted_file) :
         world{_world},
-        hosts_file{_hosts_file},
         encrypted_file{_encrypted_file},
         decrypted_file{_decrypted_file},
-        messageGateway(new SlaveGateway(this->world, hosts_file)),
+        messageGateway(new SlaveGateway(this->world)),
         rank{this->world->rank()}{
 
     this->logger = Logger::instance("Slave_" + std::to_string(this->rank));

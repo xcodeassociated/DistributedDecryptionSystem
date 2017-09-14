@@ -16,7 +16,7 @@ namespace mpi = boost::mpi;
 class SlaveGateway : public Gateway {
 public:
     using Gateway::Gateway;
-    SlaveGateway(boost::shared_ptr<mpi::communicator>, const std::string&);
+    SlaveGateway(boost::shared_ptr<mpi::communicator>);
 
     void send_to_master(const MpiMessage&);
     boost::optional<MpiMessage> receive_from_master();

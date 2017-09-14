@@ -30,7 +30,6 @@ class Slave {
     boost::shared_ptr<Logger> logger = nullptr;
     boost::shared_ptr<LoggerError> logger_error = nullptr;
     boost::shared_ptr<mpi::communicator> world = nullptr;
-    std::string hosts_file = "";
     std::string encrypted_file = "";
     std::string decrypted_file = "";
     boost::shared_ptr<SlaveGateway> messageGateway = nullptr;
@@ -52,7 +51,7 @@ class Slave {
     void init_and_start_workers();
 
 public:
-    Slave(boost::shared_ptr<mpi::communicator>, std::string, std::string, std::string);
+    Slave(boost::shared_ptr<mpi::communicator>, std::string, std::string);
 
     bool init();
     void start();

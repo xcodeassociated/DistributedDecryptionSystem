@@ -4,8 +4,8 @@
 
 #include "MasterGateway.hpp"
 
-MasterGateway::MasterGateway(boost::shared_ptr<mpi::communicator> _world, const std::string& _hosts_file_name) :
-        Gateway(_world, _hosts_file_name) {
+MasterGateway::MasterGateway(boost::shared_ptr<mpi::communicator> _world) :
+        Gateway(_world) {
     ;
 }
 

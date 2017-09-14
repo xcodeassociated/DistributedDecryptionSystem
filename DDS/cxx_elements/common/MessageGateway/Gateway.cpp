@@ -18,9 +18,8 @@
 int Gateway::timeout = 3000000;
 boost::atomic<message_id_type> Gateway::id{0};
 
-Gateway::Gateway(boost::shared_ptr<mpi::communicator> _world, const std::string& _hosts_file_name) :
-        world{_world},
-        hosts_file_name{_hosts_file_name} {
+Gateway::Gateway(boost::shared_ptr<mpi::communicator> _world) :
+        world{_world} {
     ;
 }
 

@@ -6,6 +6,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/mpi.hpp>
+#include <boost/container/vector.hpp>
 
 #include <RunOptions.hpp>
 #include <RunOptionsExceptions.hpp>
@@ -15,6 +16,11 @@
 #include <SlaveExceptions.hpp>
 
 namespace mpi = boost::mpi;
+
+bool check_files_accessibilities(const boost::container::vector<std::string>& file_names) {
+
+    return true;
+}
 
 int main(int argc, const char* argv[]) {
     std::cout << std::boolalpha;
@@ -34,10 +40,15 @@ int main(int argc, const char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    if (!check_files_accessibilities({runParameters.encrypted_file, runParameters.decrypted_file, runParameters.progress_dump_file})){
+        std::cerr << "Some of the files are not accessible" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     if (world->rank() == 0) {
 
         try {
-            Master master(world, runParameters.hosts_file, runParameters.progress_dump_file);
+            Master master(world, runParameters.progress_dump_file);
 
             if (runParameters.progress_file.empty()) {
 
@@ -58,7 +69,7 @@ int main(int argc, const char* argv[]) {
     } else {
 
         try {
-            Slave slave(world, runParameters.hosts_file, runParameters.encrypted_file, runParameters.decrypted_file);
+            Slave slave(world, runParameters.encrypted_file, runParameters.decrypted_file);
             if (slave.init())
                 slave.start();
         } catch (const SlaveException& e) {

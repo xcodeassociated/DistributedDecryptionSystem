@@ -20,7 +20,6 @@ class Gateway {
 protected:
 
     boost::shared_ptr<mpi::communicator> world;
-    std::string hosts_file_name = "";
     static int timeout;
     void _send(const int rank, const int tag, const MpiMessage &msg);
     boost::optional<MpiMessage> _receive(const int rank, const int tag);
@@ -29,9 +28,8 @@ public:
 
     static boost::atomic<message_id_type> id;
 
-    Gateway(boost::shared_ptr<mpi::communicator>, const std::string& _hosts_file_name);
+    Gateway(boost::shared_ptr<mpi::communicator>);
 
-    void ping(const int rank);
     void send(const int rank, const int tag,const MpiMessage &msg);
     boost::optional<MpiMessage> receive(const int rank, const int tag);
     boost::optional<MpiMessage> send_and_receive(const int rank, const int tag, const MpiMessage &msg);
