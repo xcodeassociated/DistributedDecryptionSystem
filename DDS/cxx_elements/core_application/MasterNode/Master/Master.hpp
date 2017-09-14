@@ -43,14 +43,6 @@ private:
     boost::container::map<int, key_ranges> progress;
     boost::container::vector<int> slaves_done;
 
-    enum class Fault_Type : int {
-        PING_FAULT = 1,
-        SEND_FAULT,
-        RECEIVE_FAULT,
-        OTHER
-    };
-
-    void fault_handle(int, Fault_Type);
     int get_world_size() const;
     slave_info collect_slave_info();
     void init_slaves(slave_info&, const key_ranges&);

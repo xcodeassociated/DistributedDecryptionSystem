@@ -19,7 +19,6 @@
 #include <SysCom.hpp>
 #include <Logger.hpp>
 #include <Decryptor.hpp>
-#include <GatewayExceptions.hpp>
 #include "SlaveGateway.hpp"
 #include "SlaveMessageHelper.hpp"
 #include "SlaveExceptions.hpp"
@@ -130,35 +129,12 @@ Slave::key_ranges Slave::respond_collect_ranges() {
         throw SlaveRequestNotInitializedException{"Message not initialized"};
 }
 
-bool Slave::init() {
-
+void Slave::init() {
     *logger << "init" << std::endl;
 
-    try {
-
-        this->respond_collect_info();
-        this->work_ranges = this->respond_collect_ranges();
-        this->inited = true;
-        return true;
-
-    } catch (const GatewayIncorrectRankException& e) {
-        *logger_error << "GatewayIncorrectRankException: " << e.what() << std::endl;
-
-        return false;
-    } catch (const GatewayPingException& e) {
-        *logger_error << "GatewayPingException: " << e.what() << std::endl;
-
-        return false;
-    } catch (const GatewaySendException& e) {
-        *logger_error << "GatewaySendException: " << e.what() << std::endl;
-
-        return false;
-    } catch (const GatewayException& e) {
-        *logger_error << "GatewayException: " << e.what() << std::endl;
-
-        return false;
-    }
-
+    this->respond_collect_info();
+    this->work_ranges = this->respond_collect_ranges();
+    this->inited = true;
 }
 
 void Slave::start(){
@@ -168,78 +144,63 @@ void Slave::start(){
     this->init_and_start_workers();
 
     while (this->work) {
-        try {
-            boost::optional<MpiMessage> request = this->messageGateway->receive_from_master();
-            if (request.is_initialized()){
-                if (request){
+        boost::optional<MpiMessage> request = this->messageGateway->receive_from_master();
+        if (request.is_initialized()){
+            if (request){
 
 
-                    switch ((*request).event) {
-                        case MpiMessage::Event::PING: {
-                            int i = 0;
+                switch ((*request).event) {
+                    case MpiMessage::Event::PING: {
+                        int i = 0;
 
-                            boost::container::map<int, std::string> info_ping{};
-                            for (auto& com : this->syscom_array) {
-                                com.first->push(SysComSTR{"", SysComSTR::Type::PING});
+                        boost::container::map<int, std::string> info_ping{};
+                        for (auto& com : this->syscom_array) {
+                            com.first->push(SysComSTR{"", SysComSTR::Type::PING});
 
-                                SysComSTR msg;
-                                while (!com.second->pop(msg)) { ; }
+                            SysComSTR msg;
+                            while (!com.second->pop(msg)) { ; }
 
-                                if (msg.type == SysComSTR::Type::FOUND) {
-                                    std::string key_str = msg.data;
-                                    MpiMessage msg = SlaveMessageHelper::create_FOUND(this->rank, key_str);
-                                    this->messageGateway->send_to_master(msg);
-                                } else if (msg.type == SysComSTR::Type::CALLBACK) {
-                                    std::string key_str = msg.data;
-                                    info_ping[i++] = key_str;
-                                } else { ; }
+                            if (msg.type == SysComSTR::Type::FOUND) {
+                                std::string key_str = msg.data;
+                                MpiMessage msg = SlaveMessageHelper::create_FOUND(this->rank, key_str);
+                                this->messageGateway->send_to_master(msg);
+                            } else if (msg.type == SysComSTR::Type::CALLBACK) {
+                                std::string key_str = msg.data;
+                                info_ping[i++] = key_str;
+                            } else { ; }
 
-                            }
-
-                            std::string data = this->convert_progress_to_string(info_ping);
-                            MpiMessage msg = SlaveMessageHelper::create_PING_CALLBACK(this->rank, data, (*request).id);
-                            this->messageGateway->send_to_master(msg);
-
-                        }break;
-
-                        case MpiMessage::Event::KILL: {
-                            *logger << "Received KILL MSG" << std::endl;
-                            for (const auto& com : this->syscom_array)
-                                com.first->push(SysComSTR{"", SysComSTR::Type::KILL});
-
-                            *logger << "Waiting for workers threads..." << std::endl;
-                            for (const auto& wt : this->thread_array) {
-                                if (wt->joinable())
-                                    wt->join();
-                            }
-                            *logger << "Worker threads joined." << std::endl;
-
-                            this->work = false;
-                        }break;
-
-                        default: {
-                            throw SlaveNotMachingOperationRequestException{"Unknow MpiMessage event type"};
                         }
+
+                        std::string data = this->convert_progress_to_string(info_ping);
+                        MpiMessage msg = SlaveMessageHelper::create_PING_CALLBACK(this->rank, data, (*request).id);
+                        this->messageGateway->send_to_master(msg);
+
+                    }break;
+
+                    case MpiMessage::Event::KILL: {
+                        *logger << "Received KILL MSG" << std::endl;
+                        for (const auto& com : this->syscom_array)
+                            com.first->push(SysComSTR{"", SysComSTR::Type::KILL});
+
+                        *logger << "Waiting for workers threads..." << std::endl;
+                        for (const auto& wt : this->thread_array) {
+                            if (wt->joinable())
+                                wt->join();
+                        }
+                        *logger << "Worker threads joined." << std::endl;
+
+                        this->work = false;
+                    }break;
+
+                    default: {
+                        throw SlaveNotMachingOperationRequestException{"Unknow MpiMessage event type"};
                     }
+                }
 
 
-                } else
-                    throw SlaveRequestException{"Received data was initialized but was empty"};
             } else
-                continue;
-
-        } catch (const GatewayIncorrectRankException& e) {
-            *logger_error << "GatewayIncorrectRankException: " << e.what() << std::endl;
-
-        } catch (const GatewayPingException& e) {
-            *logger_error << "GatewayPingException: " << e.what() << std::endl;
-
-        } catch (const GatewaySendException& e) {
-            *logger_error << "GatewaySendException: " << e.what() << std::endl;
-
-        } catch (const GatewayException& e) {
-            *logger_error << "GatewayException: " << e.what() << std::endl;
-
-        }
+                throw SlaveRequestException{"Received data was initialized but was empty"};
+        } else
+            continue;
     }
 }

@@ -9,7 +9,7 @@
 
 #include <RunOptions.hpp>
 #include <RunOptionsExceptions.hpp>
-#include <FilesCheck.cpp>
+#include <FileCheck.cpp>
 #include <FileExceptions.hpp>
 #include <Master.hpp>
 #include <MasterExceptions.hpp>
@@ -37,7 +37,7 @@ int main(int argc, const char* argv[]) {
     }
 
     try {
-        Files::check(runParameters);
+        File::check_from_run_parameters(runParameters);
     } catch (const FileNotAccessibleException& err) {
         std::cerr << err.what() << std::endl;
         return EXIT_FAILURE;
@@ -50,20 +50,17 @@ int main(int argc, const char* argv[]) {
 
         try {
             Master master(world, runParameters.progress_dump_file);
-
             if (runParameters.progress_file.empty()) {
-
                 if (master.init(runParameters.range_begine, runParameters.range_end))
                     master.start();
-
             } else {
-
                 if (master.init(runParameters.progress_file))
                     master.start();
-
             }
-
         } catch (const MasterException& e) {
+            std::cerr << e.what() << std::endl;
+            return EXIT_FAILURE;
+        } catch (const FileException& e) {
             std::cerr << e.what() << std::endl;
             return EXIT_FAILURE;
         }
@@ -72,10 +69,8 @@ int main(int argc, const char* argv[]) {
 
         try {
             Slave slave(world, runParameters.encrypted_file, runParameters.decrypted_file);
-
-            if (slave.init())
-                slave.start();
-
+            slave.init();
+            slave.start();
         } catch (const SlaveException& e) {
             std::cerr << e.what() << std::endl;
             return EXIT_FAILURE;

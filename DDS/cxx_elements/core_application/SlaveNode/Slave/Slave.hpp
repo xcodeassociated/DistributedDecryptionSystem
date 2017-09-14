@@ -53,7 +53,7 @@ class Slave {
 public:
     Slave(boost::shared_ptr<mpi::communicator>, std::string, std::string);
 
-    bool init();
+    void init();
     void start();
 };
 

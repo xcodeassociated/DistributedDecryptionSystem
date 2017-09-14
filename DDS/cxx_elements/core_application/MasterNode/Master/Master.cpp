@@ -21,9 +21,10 @@
 #include <unistd.h>
 
 #include <Logger.hpp>
+#include <FileOperation.cpp>
+#include <FileCheck.cpp>
 #include "MasterMessageHelper.hpp"
 #include "MasterGateway.hpp"
-#include "GatewayExceptions.hpp"
 #include "MasterExceptions.hpp"
 #include "Master.hpp"
 
@@ -190,24 +191,8 @@ bool Master::init(uint64_t range_begine, uint64_t range_end) {
 
         this->init_slaves(slaves, calculated_ranges);
         this->inited = true;
-        return true;
+        return this->inited;
 
-    } catch (const GatewayIncorrectRankException& e) {
-        *logger_error << "GatewayIncorrectRankException: " << e.what() << std::endl;
-
-        return false;
-    } catch (const GatewayPingException& e) {
-        *logger_error << "GatewayPingException: " << e.what() << std::endl;
-
-        return false;
-    } catch (const GatewaySendException& e) {
-        *logger_error << "GatewaySendException: " << e.what() << std::endl;
-
-        return false;
-    } catch (const GatewayException& e) {
-        *logger_error << "GatewayException: " << e.what() << std::endl;
-
-        return false;
     } catch (const MasterCollectSlaveInfoException& e) {
         *logger_error << "MasterCollectSlaveInfoException: " << e.what() << std::endl;
 
@@ -248,24 +233,7 @@ bool Master::init(const std::string& file_name) {
 
         this->init_slaves(slaves, ranges);
         this->inited = true;
-        return true;
-
-    } catch (const GatewayIncorrectRankException& e) {
-        *logger_error << "GatewayIncorrectRankException: " << e.what() << std::endl;
-
-        return false;
-    } catch (const GatewayPingException& e) {
-        *logger_error << "GatewayPingException: " << e.what() << std::endl;
-
-        return false;
-    } catch (const GatewaySendException& e) {
-        *logger_error << "GatewaySendException: " << e.what() << std::endl;
-
-        return false;
-    } catch (const GatewayException& e) {
-        *logger_error << "GatewayException: " << e.what() << std::endl;
-
-        return false;
+        return this->inited;
     } catch (const MasterCollectSlaveInfoException& e) {
         *logger_error << "MasterCollectSlaveInfoException: " << e.what() << std::endl;
 
@@ -361,86 +329,73 @@ void Master::start() {
 
     this->work = true;
 
-    while (this->work) { boost::this_thread::sleep(boost::posix_time::seconds(this->refresh_rate));
+    while (this->work) {
+        boost::this_thread::sleep(boost::posix_time::seconds(this->refresh_rate));
 
         for (int i = 1; (i < this->world->size() && this->work); i++) {
+            if (this->slaves_done.size() == this->progress.size()) {
+                *logger << "ALL SLAVES DONE!" << std::endl;
+                this->kill_all_slaves();
+                this->work = false;
 
-            try {
-                if (this->slaves_done.size() == this->progress.size()) {
-                    *logger << "ALL SLAVES DONE!" << std::endl;
-                    this->kill_all_slaves();
-                    this->work = false;
-                    break;
-                }else if (std::find(this->slaves_done.begin(), this->slaves_done.end(), (i - 1)) != this->slaves_done.end()) {
-                    continue;
-                }
-
-                *logger << "Sending PING to: " << i - 1 << std::endl;
-
-                auto msg = MessageHelper::create_PING(i);
-                this->messageGateway->send_to_salve(msg);
-                boost::optional<MpiMessage> response = this->messageGateway->receive_from_slave(i);
-                if (response.is_initialized()) {
-                    if (response) {
-
-                        switch ((*response).event) {
-                            case MpiMessage::Event::FOUND: {
-                                uint64_t key = boost::lexical_cast<uint64_t>((*response).data);
-
-                                *logger << "~~~ Found key by: " << i - 1 << " - " << key << " ~~~~" << std::endl;
-
-                                this->kill_all_slaves();
-                                this->work = false;
-                            }break;
-
-                            case MpiMessage::Event::CALLBACK: {
-                                if ((*(*response).respond_to).event == MpiMessage::Event::PING) {
-                                    std::string ping_data = (*response).data;
-
-                                    if (ping_data.length() == 0)
-                                        throw MasterMissingProgressReportException{"No Progress info, slave: " + std::to_string(i)};
-
-                                    auto update_data = this->convert_ping_report(ping_data);
-                                    this->update_progress(i - 1, update_data);
-
-                                    this->check_if_slave_done();
-
-                                } else {
-                                    throw MasterMissingProgressReportException{"Incorrect message callback"};
-                                }
-                            }break;
-
-                            default: { ; }
-                        }
-
-
-                    } else
-                        throw MasterMissingProgressReportException{"Slave Response initialized but empty, slave: " + std::to_string(i - 1)};
-                } else
-                    throw MasterMissingProgressReportException{"Slave Response not initialized (probably did not received), slave: " + std::to_string(i - 1)};
-
-            } catch (const GatewayIncorrectRankException& e) {
-                *logger_error << "GatewayIncorrectRankException: " << e.what() << std::endl;
-                this->fault_handle(i, Fault_Type::PING_FAULT);
-            } catch (const GatewayPingException& e) {
-                *logger_error << "GatewayPingException: " << e.what() << std::endl;
-                this->fault_handle(i, Fault_Type::PING_FAULT);
-            } catch (const GatewaySendException& e) {
-                *logger_error << "GatewaySendException: " << e.what() << std::endl;
-                this->fault_handle(i, Fault_Type::SEND_FAULT);
-            } catch (const GatewayReceiveException& e) {
-                *logger_error << "GatewayReceiveException: " << e.what() << std::endl;
-                this->fault_handle(i, Fault_Type::RECEIVE_FAULT);
-            } catch (const GatewayException& e) {
-                *logger_error << "GatewayException: " << e.what() << std::endl;
-                this->fault_handle(i, Fault_Type::OTHER);
+            } else if (std::find(this->slaves_done.begin(), this->slaves_done.end(), (i - 1)) !=
+                       this->slaves_done.end()) {
+                continue;
             }
+
+            *logger << "Sending PING to: " << i - 1 << std::endl;
+
+            auto msg = MessageHelper::create_PING(i);
+            this->messageGateway->send_to_salve(msg);
+            boost::optional<MpiMessage> response = this->messageGateway->receive_from_slave(i);
+            if (response.is_initialized()) {
+                if (response) {
+
+                    switch ((*response).event) {
+                        case MpiMessage::Event::FOUND: {
+                            uint64_t key = boost::lexical_cast<uint64_t>((*response).data);
+
+                            *logger << "~~~ Found key by: " << i - 1 << " - " << key << " ~~~~" << std::endl;
+
+                            this->kill_all_slaves();
+                            this->work = false;
+
+                        }break;
+
+                        case MpiMessage::Event::CALLBACK: {
+                            if ((*(*response).respond_to).event == MpiMessage::Event::PING) {
+                                std::string ping_data = (*response).data;
+
+                                if (ping_data.length() == 0)
+                                    throw MasterMissingProgressReportException{
+                                            "No Progress info, slave: " + std::to_string(i)};
+
+                                auto update_data = this->convert_ping_report(ping_data);
+                                this->update_progress(i - 1, update_data);
+
+                                this->check_if_slave_done();
+
+                            } else {
+                                throw MasterMissingProgressReportException{"Incorrect message callback"};
+                            }
+                        }break;
+
+                        default: { ;
+                        }
+                    }
+
+
+                } else
+                    throw MasterMissingProgressReportException{
+                            "Slave Response initialized but empty, slave: " + std::to_string(i - 1)};
+            } else
+                throw MasterMissingProgressReportException{
+                        "Slave Response not initialized (probably did not received), slave: " + std::to_string(i - 1)};
         }
 
-
         this->print_progress();
+        this->dump_progress();
     }
-
 }
 
 void Master::dump_progress() {
@@ -449,10 +404,12 @@ void Master::dump_progress() {
      * [n]: {n, m} ...
      * */
 
-    std::ofstream file(this->progress_file);
-    if (!file)
-        throw MasterFileOperationException{"Cannot open progress file"};
+    std::string temp_file = "tmp_" + File::get_file_name(this->progress_file);
+    std::string progress_file_path = File::get_file_path(this->progress_file);
+    std::string temp_progress_file = File::make_path(progress_file_path, temp_file);
+    File::check_open(temp_progress_file);
 
+    std::ofstream file(temp_progress_file);
     for (const auto& e : this->progress) {
         file << "[" << e.first << "]: ";
         for (const auto& range : e.second) {
@@ -463,30 +420,7 @@ void Master::dump_progress() {
     file.flush();
     file.close();
 
+    File::rename(temp_progress_file, this->progress_file);
+
     *logger << "Progress dumped to file: " << this->progress_file << std::endl;
-}
-
-void Master::fault_handle(int rank, Master::Fault_Type fault_type) {
-    switch (fault_type) {
-        case Fault_Type::PING_FAULT: {
-            *logger_error << "Handling PING fault of slave: " << rank << std::endl;
-        }break;
-
-        case Fault_Type::RECEIVE_FAULT: {
-            *logger_error << "Handling RECEIVE fault of slave: " << rank << std::endl;
-        }break;
-
-        case Fault_Type::SEND_FAULT: {
-            *logger_error << "Handling SEND fault of slave: " << rank << std::endl;
-        }break;
-
-        case Fault_Type::OTHER: {
-            *logger_error << "Handling some other fault of slave: " << rank << std::endl;
-        }break;
-    }
-    this->work = false;
-    this->dump_progress();
-    *logger_error << "Exit with error code: " << EXIT_FAILURE << std::endl;
-
-    exit(EXIT_FAILURE);
 }

@@ -13,7 +13,6 @@
 #include <fstream>
 
 #include "Gateway.hpp"
-#include "GatewayExceptions.hpp"
 
 int Gateway::timeout = 3000000;
 boost::atomic<message_id_type> Gateway::id{0};

@@ -6,28 +6,28 @@
 #include "FileExceptions.hpp"
 #include <RunOptions.hpp>
 
-namespace Files {
+namespace File {
 
     bool file_empty(const std::string& file_name) {
         std::ifstream file(file_name, std::ios::binary);
         if (!file)
-            throw FileNotAccessibleException{"Cannot open: " + file_name};
+            throw FileNotAccessibleException{"Cannot check_open: " + file_name};
 
         return file.peek() == std::ifstream::traits_type::eof();
     }
 
-    void open(const std::string& file_name) {
+    void check_open(const std::string &file_name) {
         std::ofstream fs(file_name, std::ios::binary);
         if (!fs.is_open())
-            throw FileNotAccessibleException{"File: " + file_name + " cannot be open/created"};
+            throw FileNotAccessibleException{"File: " + file_name + " cannot be check_open/created"};
     }
 
-    void check(const RunParameters& parameters) {
+    void check_from_run_parameters(const RunParameters &parameters) {
         if (file_empty(parameters.encrypted_file))
             throw FileEmptyException{"File: " + parameters.encrypted_file + " empty"};
 
-        open(parameters.decrypted_file);
-        open(parameters.progress_dump_file);
+        check_open(parameters.decrypted_file);
+        check_open(parameters.progress_dump_file);
 
         if (!parameters.progress_file.empty())
             if (file_empty(parameters.encrypted_file))
