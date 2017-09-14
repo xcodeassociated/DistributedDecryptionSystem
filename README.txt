@@ -10,7 +10,8 @@ Proces kompilacji jest identyczny dla obu aplikacji:
 1. Wchodzimy do katalogu odpowiedniej aplikacji
 2. Tworzymy katalog (sugeruję nazwę “build”), który będzie przechowywać pliki potrzebne w procesie budowania aplikacji, jak również samą zbudowaną aplikację
 3. Wchodzimy do stworzonego katalogu, a następnie wykonujemy: 
-	cmake .. -DCMAKE_C_COMPILER=cc -DCMAKE_CXX_COMPILER=c++ -DO="3"4. Po wygenerowaniu niezbędnych plików należy wykonać polecenie: 
+	cmake .. -DCMAKE_C_COMPILER=cc -DCMAKE_CXX_COMPILER=c++ -DO="3"
+4. Po wygenerowaniu niezbędnych plików należy wykonać polecenie: 
 	make all
 5. Tak przygotowaną aplikację możemy uruchomić. 
 
