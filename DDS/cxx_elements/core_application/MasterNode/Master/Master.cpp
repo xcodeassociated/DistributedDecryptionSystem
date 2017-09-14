@@ -38,7 +38,10 @@ Master::Master(boost::shared_ptr<mpi::communicator> _world, std::string _progres
 }
 
 Master::~Master() {
-    File::remove(this->progress_file);
+    if (!this->work) {
+        *logger << "Master destructor cleans up progress file: " << this->progress_file << std::endl;
+        File::remove(this->progress_file);
+    }
 }
 
 Master::key_ranges Master::calculate_range(uint64_t absolute_key_from, uint64_t absolute_key_to, int size) const {
