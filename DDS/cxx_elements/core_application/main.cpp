@@ -6,21 +6,17 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/mpi.hpp>
-#include <boost/container/vector.hpp>
 
 #include <RunOptions.hpp>
 #include <RunOptionsExceptions.hpp>
+#include <FilesCheck.cpp>
+#include <FileExceptions.hpp>
 #include <Master.hpp>
 #include <MasterExceptions.hpp>
 #include <Slave.hpp>
 #include <SlaveExceptions.hpp>
 
 namespace mpi = boost::mpi;
-
-bool check_files_accessibilities(const boost::container::vector<std::string>& file_names) {
-
-    return true;
-}
 
 int main(int argc, const char* argv[]) {
     std::cout << std::boolalpha;
@@ -32,16 +28,21 @@ int main(int argc, const char* argv[]) {
 
     try {
         runParameters = RunOptions::get(argc, argv);
-    } catch (const MissingParameterException& e) {
+    } catch (const MissingParameterException &e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
-    } catch (const IncorrectParameterException& e) {
+    } catch (const IncorrectParameterException &e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 
-    if (!check_files_accessibilities({runParameters.encrypted_file, runParameters.decrypted_file, runParameters.progress_dump_file})){
-        std::cerr << "Some of the files are not accessible" << std::endl;
+    try {
+        Files::check(runParameters);
+    } catch (const FileNotAccessibleException& err) {
+        std::cerr << err.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch (const FileEmptyException& err) {
+        std::cerr << err.what() << std::endl;
         return EXIT_FAILURE;
     }
 

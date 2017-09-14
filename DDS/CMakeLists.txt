@@ -76,6 +76,7 @@ include_directories(${CXX}/common/MessageGateway)
 include_directories(${CXX}/common/Ping)
 include_directories(${CXX}/common/JsonFileOperations)
 include_directories(${CXX}/common/RunOptions)
+include_directories(${CXX}/common/File)
 include_directories(${APP_CORE}/MasterNode/Watchdog)
 include_directories(${APP_CORE}/MasterNode/Master)
 include_directories(${APP_CORE}/SlaveNode/Worker/WorkerBase)
@@ -96,6 +97,7 @@ target_link_libraries(
         ${Boost_LIBRARIES}
         ${CRYPTOPP_LIBRARY}
         RunOptionsLib
+        FileLib
         MasterNodeObject
         SlaveNodeObject
         pthread)

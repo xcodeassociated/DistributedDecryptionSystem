@@ -14,3 +14,9 @@ set(RunOptionsSOURCES
         RunOptions/RunOptionsExceptions.hpp)
 add_library(RunOptionsLib SHARED ${RunOptionsSOURCES})
 target_link_libraries(RunOptionsLib ${Boost_LIBRARIES})
+
+set(FileSOURCES
+        File/FilesCheck.cpp
+        File/FileExceptions.hpp)
+add_library(FileLib SHARED ${FileSOURCES})
+target_link_libraries(FileLib ${Boost_LIBRARIES})
