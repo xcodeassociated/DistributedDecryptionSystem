@@ -12,7 +12,6 @@
 #include <utility>
 #include <fstream>
 
-#include <ping.cpp>
 #include "Gateway.hpp"
 #include "GatewayExceptions.hpp"
 
@@ -67,46 +66,16 @@ boost::optional<MpiMessage> Gateway::_receive(const int rank, const int tag){
     return {};
 }
 
-void Gateway::ping(const int rank){
-    const std::string hosts_file_name = "hosts";
-
-    if (!boost::filesystem::exists(hosts_file_name))
-        throw GatewayIncorrectRankException{"Hosts file not found"};
-
-    std::ifstream hosts_file(hosts_file_name, std::ios::binary);
-    std::vector<std::string> hosts_ip;
-    std::copy(std::istream_iterator<std::string>(hosts_file),
-              std::istream_iterator<std::string>(),
-              std::back_inserter(hosts_ip));
-
-    std::string ip;
-    try {
-        ip = hosts_ip[rank];
-    } catch (const std::out_of_range &) {
-        throw GatewayIncorrectRankException{"Rank not present in hosts file"};
-    }
-
-    boost::asio::io_service io_service;
-    pinger p(io_service, ip.c_str());
-    try {
-        io_service.run_one();
-    } catch (const std::runtime_error& e) {
-        throw GatewayPingException{e.what()};
-    }
-}
 
 void Gateway::send(const int rank, const int tag, const MpiMessage &msg){
-    ping(rank);
     _send(rank, tag, msg);
 }
 
 boost::optional<MpiMessage> Gateway::receive(const int rank, const int tag) {
-    ping(rank);
     return _receive(rank, tag);
 }
 
 boost::optional<MpiMessage> Gateway::send_and_receive(const int rank, const int tag, const MpiMessage &msg) {
-    ping(rank);
     _send(rank, tag, msg);
     return _receive(rank, tag);
 }
