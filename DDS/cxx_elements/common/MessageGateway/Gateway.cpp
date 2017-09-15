@@ -14,7 +14,7 @@
 
 #include "Gateway.hpp"
 
-int Gateway::timeout = 3000000;
+int Gateway::timeout = 10000000;
 boost::atomic<message_id_type> Gateway::id{0};
 
 Gateway::Gateway(boost::shared_ptr<mpi::communicator> _world) : world{_world} {
