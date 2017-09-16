@@ -14,11 +14,20 @@
 
 #include "Gateway.hpp"
 
-int Gateway::timeout = 10000000;
 boost::atomic<message_id_type> Gateway::id{0};
+int Gateway::timeout = 10000000; //10s
 
 Gateway::Gateway(boost::shared_ptr<mpi::communicator> _world) : world{_world} {
     ;
+}
+
+int Gateway::get_timeout() {
+    return timeout;
+}
+
+void Gateway::set_timeout(int _timeout) {
+    assert(_timeout > 0);
+    timeout = _timeout;
 }
 
 void Gateway::_send(const int rank, const int tag, const MpiMessage &msg){

@@ -25,7 +25,9 @@ namespace RunOptions {
                     ("encrypted", po::value<std::string>(), "encrypted file path")
                     ("decrypt", po::value<std::string>(), "decrypted file path")
                     ("progress_dump", po::value<std::string>(), "file that holds progress dump")
-                    ("resume", po::value<std::string>(), "resume work from progress file");
+                    ("resume", po::value<std::string>(), "resume work from progress file")
+                    ("message_timeout", po::value<int>(), "sets max time (in microseconds) when Master waits for response from "
+                            "Slave after sending request -- 10s is default value");
 
             po::variables_map vm;
             po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -42,6 +44,14 @@ namespace RunOptions {
             if (vm.count("resume")) {
                 runParameters.progress_file = vm["resume"].as<std::string>();
                 resume = true;
+            }
+
+            if (vm.count("message_timeout")) {
+                int timeout = vm["message_timeout"].as<int>();
+                if (timeout > 0)
+                    runParameters.timeout = timeout;
+                else
+                    throw IncorrectParameterException{"message_timeout parameter must be grater than 0, passed: " + timeout};
             }
 
             if (vm.count("from") || resume) {

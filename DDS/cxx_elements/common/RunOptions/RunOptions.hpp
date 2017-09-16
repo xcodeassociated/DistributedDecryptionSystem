@@ -15,6 +15,7 @@ struct RunParameters {
     std::string decrypted_file = "";
     std::string progress_file = "";
     std::string progress_dump_file = "DDS_Progress.txt";
+    int timeout = 0;
 };
 
 namespace RunOptions {

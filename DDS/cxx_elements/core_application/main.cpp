@@ -15,6 +15,7 @@
 #include <MasterExceptions.hpp>
 #include <Slave.hpp>
 #include <SlaveExceptions.hpp>
+#include <Gateway.hpp>
 
 namespace mpi = boost::mpi;
 
@@ -47,11 +48,22 @@ int main(int argc, const char* argv[]) {
     } catch (const FileEmptyException& err) {
         std::cerr << err.what() << std::endl;
         return EXIT_FAILURE;
+    } catch (const FileException& err) {
+        std::cerr << err.what() << std::endl;
+        return EXIT_FAILURE;
     }
 
     if (world->rank() == 0) {
 
         try {
+
+            if (runParameters.timeout > 0) {
+                std::cout << "Setting Gateway timeout for message request response: "
+                          << runParameters.timeout << " microseconds" << std::endl;
+
+                Gateway::set_timeout(runParameters.timeout);
+            }
+
             Master master(world, runParameters.progress_dump_file);
             if (runParameters.progress_file.empty()) {
                 if (master.init(runParameters.range_begine, runParameters.range_end))
