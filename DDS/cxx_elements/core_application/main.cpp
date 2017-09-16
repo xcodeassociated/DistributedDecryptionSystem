@@ -28,10 +28,13 @@ int main(int argc, const char* argv[]) {
 
     try {
         runParameters = RunOptions::get(argc, argv);
-    } catch (const MissingParameterException &e) {
+    } catch (const MissingParameterException& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
-    } catch (const IncorrectParameterException &e) {
+    } catch (const IncorrectParameterException& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch (const RunOptionException& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
