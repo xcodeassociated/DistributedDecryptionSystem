@@ -338,7 +338,7 @@ void Master::start() {
 
         for (int i = 1; (i < this->world->size() && this->work); i++) {
             if (this->slaves_done.size() == this->progress.size()) {
-                *logger << "ALL SLAVES DONE!" << std::endl;
+                *logger << "ALL SLAVES DONE -- NO KEY FOUND!" << std::endl;
                 this->kill_all_slaves();
                 this->work = false;
             } else if (std::find(this->slaves_done.begin(), this->slaves_done.end(), (i - 1)) !=

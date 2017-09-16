@@ -19,7 +19,7 @@ namespace File {
     void check_open(const std::string &file_name) {
         std::ofstream fs(file_name, std::ios::binary);
         if (!fs.is_open())
-            throw FileNotAccessibleException{"File: " + file_name + " cannot be check_open/created"};
+            throw FileNotAccessibleException{"File: " + file_name + " cannot be open/created"};
     }
 
     void check_from_run_parameters(const RunParameters &parameters) {

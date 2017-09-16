@@ -15,14 +15,8 @@
 
 namespace po = boost::program_options;
 
-void help_print(){
-    std::cout << "SimpleCrypt Help: " << std::endl;
-    std::cout << "\t--help: prints program options" << std::endl;
-    std::cout << "\t--sum: calculates SHA1 sum for a given file" << std::endl;
-    std::cout << "\t--encrypt: enkrypts given file" << std::endl;
-    std::cout << "\t--decrypt: decrypts given file" << std::endl;
-    std::cout << "\t--output: file that stores result data" << std::endl;
-    std::cout << "\t--key: encryption/decryption key" << std::endl;
+void help_print(const po::options_description& desc){
+    std::cout << desc;
     std::cout << std::endl;
     std::cout << "Example usage: " << std::endl;
     std::cout << "\tencryption: ./SimpleCrypt --key <decimal_value> --encrypt <file> --output <file>" << std::endl;
@@ -60,6 +54,8 @@ std::vector<unsigned char> uint64ToBytes(uint64_t value) {
     return result;
 }
 
+int verbose = 3;
+
 int main(int argc, const char* argv[]) {
 
     try {
@@ -70,15 +66,21 @@ int main(int argc, const char* argv[]) {
                 ("encrypt", po::value<std::string>(), "Encrypts file")
                 ("decrypt", po::value<std::string>(), "Decrypts file")
                 ("output", po::value<std::string>(), "Output file")
-                ("key", po::value<uint64_t>(), "AES Key file - int value");
+                ("key", po::value<uint64_t>(), "AES Key file - int value")
+                ("verbose", po::value<uint64_t>(),
+                 "sets verbose: 1 = shows plain data form input, 2 = shows data for output, 0 = all");
 
         po::variables_map vm;
         po::store(po::parse_command_line(argc, argv, desc), vm);
         po::notify(vm);
 
         if (vm.count("help")) {
-            ::help_print();
+            ::help_print(desc);
             return 0;
+        }
+
+        if (vm.count("verbose")) {
+            verbose = vm["verbose"].as<int>();
         }
 
         if (vm.count("sum")) {
@@ -121,7 +123,9 @@ int main(int argc, const char* argv[]) {
             std::string plaintext = read_stream.str();
 
             std::cout << "Plain Text size: " << plaintext.size() << " bytes" << std::endl;
-            std::cout << "Plain Text data: " << plaintext << std::endl;
+
+            if (verbose == 0 || verbose == 1)
+                std::cout << "Plain Text data: " << plaintext << std::endl;
 
             std::string sha1 = ::hashString(plaintext);
             std::cout << "Plain Text sha1: " << sha1 << std::endl;
@@ -136,12 +140,15 @@ int main(int argc, const char* argv[]) {
             st_filter.MessageEnd();
 
             std::cout << "Cipher Text size: " << encrypted_text.size() << " bytes" << std::endl;
-            std::cout << "Cipher Text data: ";
-            std::stringstream ss;
-            for (int i = 0; i < encrypted_text.size(); i++) {
-                ss << "0x" << std::hex << (0xFF & static_cast<byte>(encrypted_text[i])) << " ";
+
+            if (verbose == 0 || verbose == 2) {
+                std::cout << "Cipher Text data: ";
+                std::stringstream ss;
+                for (int i = 0; i < encrypted_text.size(); i++) {
+                    ss << "0x" << std::hex << (0xFF & static_cast<byte>(encrypted_text[i])) << " ";
+                }
+                std::cout << ss.str() << std::endl;
             }
-            std::cout << ss.str() << std::endl;
 
             if (vm.count("output")) {
                 std::string output = vm["output"].as<std::string>();
@@ -202,7 +209,9 @@ int main(int argc, const char* argv[]) {
             }
 
             std::cout << "sha1: " << sha1 << std::endl;
-            std::cout << "ciphertext: " << ciphertext << std::endl;
+
+            if (verbose == 0 || verbose == 1)
+                std::cout << "ciphertext: " << ciphertext << std::endl;
 
             CryptoPP::AES::Decryption decryption_engine(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
             CryptoPP::CBC_Mode_ExternalCipher::Decryption cbc_mode_decryption(decryption_engine, keyArray);
@@ -219,7 +228,9 @@ int main(int argc, const char* argv[]) {
 
                 std::cout << "Decrypted size: " << decrypted_text.size() << std::endl;
 
-                std::cout << "Decrypted: " << decrypted_text << std::endl;
+                if (verbose == 0 || verbose == 2)
+                    std::cout << "Decrypted: " << decrypted_text << std::endl;
+
                 std::string decrypted_sha = ::hashString(decrypted_text);
                 std::cout << "decrypted sha1: " << decrypted_sha << std::endl;
 
@@ -241,16 +252,19 @@ int main(int argc, const char* argv[]) {
                 }
 
             } catch (const CryptoPP::InvalidCiphertext &e) {
-                std::cout << "CryptoPP::InvalidCiphertext Exception: " << e.what() << std::endl;
-                return 1;
+                std::cerr << "CryptoPP::InvalidCiphertext Exception: " << e.what() << std::endl;
+                return EXIT_FAILURE;
             }
 
-            return 0;
+            return EXIT_SUCCESS;
         }
+    } catch (const po::error& e) {
+        std::cerr << "ProgramOptions Exception: " << e.what();
+        return EXIT_FAILURE;
     } catch (const std::runtime_error& er) {
         std::cerr << "Exception: " << er.what();
+        return  EXIT_FAILURE;
     }
 
-    ::help_print();
-    return 0;
+    return EXIT_SUCCESS;
 }

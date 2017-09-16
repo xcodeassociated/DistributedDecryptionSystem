@@ -16,59 +16,63 @@ namespace RunOptions {
     RunParameters get(int argc, const char* argv[]) {
         RunParameters runParameters;
 
-        po::options_description desc("DDS RunOptions");
-        desc.add_options()
-                ("help", "produce help MpiMessage")
-                ("from", po::value<uint64_t>(), "set key range BEGIN value")
-                ("to", po::value<uint64_t>(), "set key range END value")
-                ("encrypted", po::value<std::string>(), "encrypted file path")
-                ("decrypt", po::value<std::string>(), "decrypted file path")
-                ("progress_dump", po::value<std::string>(), "file that holds progress dump")
-                ("resume", po::value<std::string>(), "resume work from progress file");
+        try {
+            po::options_description desc("DDS RunOptions");
+            desc.add_options()
+                    ("help", "produce help MpiMessage")
+                    ("from", po::value<uint64_t>(), "set key range BEGIN value")
+                    ("to", po::value<uint64_t>(), "set key range END value")
+                    ("encrypted", po::value<std::string>(), "encrypted file path")
+                    ("decrypt", po::value<std::string>(), "decrypted file path")
+                    ("progress_dump", po::value<std::string>(), "file that holds progress dump")
+                    ("resume", po::value<std::string>(), "resume work from progress file");
 
-        po::variables_map vm;
-        po::store(po::parse_command_line(argc, argv, desc), vm);
-        po::notify(vm);
+            po::variables_map vm;
+            po::store(po::parse_command_line(argc, argv, desc), vm);
+            po::notify(vm);
 
-        bool resume = false;
+            bool resume = false;
 
-        if (vm.count("help")) {
-            std::stringstream ss;
-            ss << desc;
-            throw IncorrectParameterException{ss.str()};
-        }
+            if (vm.count("help")) {
+                std::stringstream ss;
+                ss << desc;
+                throw IncorrectParameterException{ss.str()};
+            }
 
-        if (vm.count("resume")) {
-            runParameters.progress_file = vm["resume"].as<std::string>();
-            resume = true;
-        }
+            if (vm.count("resume")) {
+                runParameters.progress_file = vm["resume"].as<std::string>();
+                resume = true;
+            }
 
-        if (vm.count("from") | resume) {
-            if (!resume)
-                runParameters.range_begine = vm["from"].as<uint64_t>();
-        } else {
-            throw MissingParameterException{"Set min range!"};
-        }
+            if (vm.count("from") || resume) {
+                if (!resume)
+                    runParameters.range_begine = vm["from"].as<uint64_t>();
+            } else {
+                throw MissingParameterException{"Set min range!"};
+            }
 
-        if (vm.count("to") | resume) {
-            if (!resume)
-                runParameters.range_end = vm["to"].as<uint64_t>();
-        } else {
-            throw MissingParameterException{"Set max range!"};
-        }
+            if (vm.count("to") || resume) {
+                if (!resume)
+                    runParameters.range_end = vm["to"].as<uint64_t>();
+            } else {
+                throw MissingParameterException{"Set max range!"};
+            }
 
-        if (vm.count("encrypted")) {
-            runParameters.encrypted_file = vm["encrypted"].as<std::string>();
-        } else {
-            throw MissingParameterException{"Encrypted file path missing!"};
-        }
+            if (vm.count("encrypted")) {
+                runParameters.encrypted_file = vm["encrypted"].as<std::string>();
+            } else {
+                throw MissingParameterException{"Encrypted file path missing!"};
+            }
 
-        if (vm.count("decrypt")) {
-            runParameters.decrypted_file = vm["decrypt"].as<std::string>();
-        }
+            if (vm.count("decrypt")) {
+                runParameters.decrypted_file = vm["decrypt"].as<std::string>();
+            }
 
-        if (vm.count("progress_dump")) {
-            runParameters.progress_dump_file = vm["progress_dump"].as<std::string>();
+            if (vm.count("progress_dump")) {
+                runParameters.progress_dump_file = vm["progress_dump"].as<std::string>();
+            }
+        } catch (const po::error& e) {
+            throw RunOptionException{e.what()};
         }
 
         return runParameters;
