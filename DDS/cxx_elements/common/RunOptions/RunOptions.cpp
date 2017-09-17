@@ -51,7 +51,7 @@ namespace RunOptions {
                 if (timeout > 0)
                     runParameters.timeout = timeout;
                 else
-                    throw IncorrectParameterException{"message_timeout parameter must be grater than 0, passed: " + timeout};
+                    throw IncorrectParameterException{"message_timeout parameter must be grater than 0, passed: " + std::to_string(timeout)};
             }
 
             if (vm.count("from") || resume) {
