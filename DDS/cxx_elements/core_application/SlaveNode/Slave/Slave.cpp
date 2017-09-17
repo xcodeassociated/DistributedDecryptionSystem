@@ -77,7 +77,7 @@ void Slave::init_and_start_workers() {
             uint64_t rbegin = range.first;
             uint64_t rend = range.second;
             KeyRange kr = KeyRange{rbegin, rend};
-            decryptor.init(i, kr, ef, df);
+            decryptor.init_decryptor(i, kr, ef, df);
             decryptor.start();
         };
         boost::shared_ptr<boost::thread> worker_thread_ptr = boost::make_shared<boost::thread>(worker_thread);
@@ -90,43 +90,35 @@ void Slave::init_and_start_workers() {
 
 void Slave::respond_collect_info() {
 
-    boost::optional<MpiMessage> request = this->messageGateway->receive_from_master();
-    if (request.is_initialized()){
-        if (request){
-            if ((*request).event == MpiMessage::Event::INFO) {
+    MpiMessage request = this->messageGateway->receive_from_master();
 
-                int threads = this->get_available_threads();
-                MpiMessage response_msg = SlaveMessageHelper::create_INFO_CALLBACK(this->rank, std::to_string(threads), (*request).id);
-                this->messageGateway->send_to_master(response_msg);
+    if (request.event == MpiMessage::Event::INFO) {
 
-            } else
-                throw SlaveNotMachingOperationRequestException{"Incorrect message event"};
-        } else
-            throw SlaveRequestException{"Message initialized, but empty"};
+        int threads = this->get_available_threads();
+        MpiMessage response_msg = SlaveMessageHelper::create_INFO_CALLBACK(this->rank, std::to_string(threads), request.id);
+        this->messageGateway->send_to_master(response_msg);
+
     } else
-        throw SlaveRequestNotInitializedException{"Message not initialized"};
+        throw SlaveNotMachingOperationRequestException{"Incorrect message event"};
+
 }
 
 Slave::key_ranges Slave::respond_collect_ranges() {
-    boost::optional<MpiMessage> request = this->messageGateway->receive_from_master();
-    if (request.is_initialized()){
-        if (request){
-            if ((*request).event == MpiMessage::Event::INIT) {
+    MpiMessage request = this->messageGateway->receive_from_master();
 
-                std::string data = (*request).data;
-                *logger << "Received ranges: " << data << std::endl;
+    if (request.event == MpiMessage::Event::INIT) {
 
-                MpiMessage response_msg = SlaveMessageHelper::create_INIT_CALLBACK(this->rank, (*request).id);
-                this->messageGateway->send_to_master(response_msg);
+        std::string data = request.data;
+        *logger << "Received ranges: " << data << std::endl;
 
-                return this->convert_init_data(data);
+        MpiMessage response_msg = SlaveMessageHelper::create_INIT_CALLBACK(this->rank, request.id);
+        this->messageGateway->send_to_master(response_msg);
 
-            } else
-                throw SlaveNotMachingOperationRequestException{"Incorrect message event"};
-        } else
-            throw SlaveRequestException{"Message initialized, but empty"};
+        return this->convert_init_data(data);
+
     } else
-        throw SlaveRequestNotInitializedException{"Message not initialized"};
+        throw SlaveNotMachingOperationRequestException{"Incorrect message event"};
+
 }
 
 void Slave::init() {
@@ -144,63 +136,54 @@ void Slave::start(){
     this->init_and_start_workers();
 
     while (this->work) {
-        boost::optional<MpiMessage> request = this->messageGateway->receive_from_master();
-        if (request.is_initialized()){
-            if (request){
+        MpiMessage request = this->messageGateway->receive_from_master();
 
+        switch ((request).event) {
+            case MpiMessage::Event::PING: {
+                int i = 0;
 
-                switch ((*request).event) {
-                    case MpiMessage::Event::PING: {
-                        int i = 0;
+                boost::container::map<int, std::string> info_ping{};
+                for (auto& com : this->syscom_array) {
+                    com.first->push(SysComSTR{"", SysComSTR::Type::PING});
 
-                        boost::container::map<int, std::string> info_ping{};
-                        for (auto& com : this->syscom_array) {
-                            com.first->push(SysComSTR{"", SysComSTR::Type::PING});
+                    SysComSTR msg;
+                    while (!com.second->pop(msg)) { ; }
 
-                            SysComSTR msg;
-                            while (!com.second->pop(msg)) { ; }
-
-                            if (msg.type == SysComSTR::Type::FOUND) {
-                                std::string key_str = msg.data;
-                                MpiMessage msg = SlaveMessageHelper::create_FOUND(this->rank, key_str);
-                                this->messageGateway->send_to_master(msg);
-                            } else if (msg.type == SysComSTR::Type::CALLBACK) {
-                                std::string key_str = msg.data;
-                                info_ping[i++] = key_str;
-                            } else { ; }
-
-                        }
-
-                        std::string data = this->convert_progress_to_string(info_ping);
-                        MpiMessage msg = SlaveMessageHelper::create_PING_CALLBACK(this->rank, data, (*request).id);
+                    if (msg.type == SysComSTR::Type::FOUND) {
+                        std::string key_str = msg.data;
+                        MpiMessage msg = SlaveMessageHelper::create_FOUND(this->rank, key_str);
                         this->messageGateway->send_to_master(msg);
+                    } else if (msg.type == SysComSTR::Type::CALLBACK) {
+                        std::string key_str = msg.data;
+                        info_ping[i++] = key_str;
+                    } else { ; }
 
-                    }break;
-
-                    case MpiMessage::Event::KILL: {
-                        *logger << "Received KILL MSG" << std::endl;
-                        for (const auto& com : this->syscom_array)
-                            com.first->push(SysComSTR{"", SysComSTR::Type::KILL});
-
-                        *logger << "Waiting for workers threads..." << std::endl;
-                        for (const auto& wt : this->thread_array) {
-                            if (wt->joinable())
-                                wt->join();
-                        }
-                        *logger << "Worker threads joined." << std::endl;
-
-                        this->work = false;
-                    }break;
-
-                    default: {
-                        throw SlaveNotMachingOperationRequestException{"Unknow MpiMessage event type"};
-                    }
                 }
 
+                std::string data = this->convert_progress_to_string(info_ping);
+                MpiMessage msg = SlaveMessageHelper::create_PING_CALLBACK(this->rank, data, request.id);
+                this->messageGateway->send_to_master(msg);
 
-            } else
-                throw SlaveRequestException{"Received data was initialized but was empty"};
-        } else
-            continue;
+            }break;
+
+            case MpiMessage::Event::KILL: {
+                *logger << "Received KILL MSG" << std::endl;
+                for (const auto& com : this->syscom_array)
+                    com.first->push(SysComSTR{"", SysComSTR::Type::KILL});
+
+                *logger << "Waiting for workers threads..." << std::endl;
+                for (const auto& wt : this->thread_array) {
+                    if (wt->joinable())
+                        wt->join();
+                }
+                *logger << "Worker threads joined." << std::endl;
+
+                this->work = false;
+            }break;
+
+            default: {
+                throw SlaveNotMachingOperationRequestException{"Unknow MpiMessage event type"};
+            }
+        }
     }
 }

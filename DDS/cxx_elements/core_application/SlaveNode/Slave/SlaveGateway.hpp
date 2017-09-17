@@ -19,7 +19,7 @@ public:
     SlaveGateway(boost::shared_ptr<mpi::communicator>);
 
     void send_to_master(const MpiMessage&);
-    boost::optional<MpiMessage> receive_from_master();
+    MpiMessage receive_from_master();
 };
 
 

@@ -13,6 +13,6 @@ void MasterGateway::send_to_salve(const MpiMessage& msg) {
     this->send(msg.receiver, msg.sender, msg);
 }
 
-boost::optional<MpiMessage> MasterGateway::receive_from_slave(int rank) {
+MpiMessage MasterGateway::receive_from_slave(int rank) {
     return this->receive(rank, 0);
 }

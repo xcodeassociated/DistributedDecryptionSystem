@@ -20,7 +20,7 @@ public:
     MasterGateway(boost::shared_ptr<mpi::communicator>);
 
     void send_to_salve(const MpiMessage&);
-    boost::optional<MpiMessage> receive_from_slave(int);
+    MpiMessage receive_from_slave(int);
 };
 
 

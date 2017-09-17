@@ -132,7 +132,7 @@ boost::container::map<int, uint64_t> Master::convert_ping_report(const std::stri
     return data;
 };
 
-int Master::get_world_size() const {
+int Master::get_world_size() const { std::cout << "pipa\n";
     return this->world->size();
 }
 
@@ -161,19 +161,16 @@ void Master::init_slaves(slave_info &si, const key_ranges& ranges) {
 
         auto msg = MessageHelper::create_INIT(slave.first + 1, data);
         this->messageGateway->send_to_salve(msg);
-        boost::optional<MpiMessage> response = this->messageGateway->receive_from_slave(slave.first + 1);
-        if (response.is_initialized()) {
-            if (response) {
-                if ((*response).event != MpiMessage::Event::CALLBACK)
-                    throw MasterCallbackException{"Incorrect callback event"};
+        MpiMessage response = this->messageGateway->receive_from_slave(slave.first + 1);
 
-                if (!(*response).respond_to)
-                    throw MasterCallbackException{"Missing response"};
+        if ((response).event != MpiMessage::Event::CALLBACK)
+            throw MasterCallbackException{"Incorrect callback event"};
 
-                if ((*(*response).respond_to).message_id != msg.id)
-                    throw MasterCallbackException{"Not matching response message id"};
-            }
-        }
+        if (!(response).respond_to)
+            throw MasterCallbackException{"Missing response"};
+
+        if ((*(response).respond_to).message_id != msg.id)
+            throw MasterCallbackException{"Not matching response message id"};
 
     }
 }
@@ -232,7 +229,7 @@ bool Master::init(const std::string& file_name) {
         read_stream << ifile.rdbuf();
         key_ranges ranges = this->load_progress(read_stream.str());
 
-        if (total_threads != ranges.size())
+        if (total_threads != static_cast<int>(ranges.size()))
             throw MasterResumeException{"World size is different: " + std::to_string(this->get_world_size() - 1)};
 
         this->init_slaves(slaves, ranges);
@@ -260,28 +257,24 @@ Master::slave_info Master::collect_slave_info() {
         const auto msg = MessageHelper::create_INFO(i);
 
         this->messageGateway->send_to_salve(msg);
-        boost::optional<MpiMessage> response = this->messageGateway->receive_from_slave(i);
-        if (response.is_initialized()) {
-            if (response) {
-                if ((*response).event != MpiMessage::Event::CALLBACK)
-                    throw MasterCallbackException{"Incorrect Callback"};
+        MpiMessage response = this->messageGateway->receive_from_slave(i);
 
-                if (!(*response).respond_to)
-                    throw MasterCallbackException{"Callback not inited"};
+        if ((response).event != MpiMessage::Event::CALLBACK) {
+            if (!(response).respond_to)
+                throw MasterCallbackException{"Callback not inited"};
 
-                if ((*(*response).respond_to).message_id != msg.id)
-                    throw MasterCallbackException{"Incorrect message id for Callback"};
+            if ((*(response).respond_to).message_id != msg.id)
+                throw MasterCallbackException{"Incorrect message id for Callback"};
 
-                std::string tmp = (*response).data;
-                int threads = std::atoi(tmp.c_str());
+            std::string tmp = response.data;
+            int threads = std::atoi(tmp.c_str());
 
-                *logger << "Received info from: [" << (*response).sender << "]:  " << threads << std::endl;
+            *logger << "Received info from: [" << response.sender << "]:  " << threads << std::endl;
 
-                data[i-1] = threads;
-            } else
-                throw MasterCollectSlaveInfoException{"Response initialized but empty"};
+            data[i - 1] = threads;
         } else
-            throw MasterCollectSlaveInfoException{"Response not initialized"};
+            throw MasterCallbackException{"Received message is not an Callback"};
+
     }
     return data;
 }
@@ -350,50 +343,39 @@ void Master::start() {
 
             auto msg = MessageHelper::create_PING(i);
             this->messageGateway->send_to_salve(msg);
-            boost::optional<MpiMessage> response = this->messageGateway->receive_from_slave(i);
-            if (response.is_initialized()) {
-                if (response) {
+            MpiMessage response = this->messageGateway->receive_from_slave(i);
 
-                    switch ((*response).event) {
-                        case MpiMessage::Event::FOUND: {
-                            uint64_t key = boost::lexical_cast<uint64_t>((*response).data);
+            switch (response.event) {
+                case MpiMessage::Event::FOUND: {
+                    uint64_t key = boost::lexical_cast<uint64_t>(response.data);
 
-                            *logger << "~~~ Found key by: " << i - 1 << " - " << key << " ~~~~" << std::endl;
+                    *logger << "~~~ Found key by: " << i - 1 << " - " << key << " ~~~~" << std::endl;
 
-                            this->kill_all_slaves();
-                            this->work = false;
+                    this->kill_all_slaves();
+                    this->work = false;
 
-                        }break;
+                }break;
 
-                        case MpiMessage::Event::CALLBACK: {
-                            if ((*(*response).respond_to).event == MpiMessage::Event::PING) {
-                                std::string ping_data = (*response).data;
+                case MpiMessage::Event::CALLBACK: {
+                    if ((*(response).respond_to).event == MpiMessage::Event::PING) {
+                        std::string ping_data = response.data;
 
-                                if (ping_data.length() == 0)
-                                    throw MasterMissingProgressReportException{
-                                            "No Progress info, slave: " + std::to_string(i)};
+                        if (ping_data.length() == 0)
+                            throw MasterMissingProgressReportException{
+                                    "No Progress info, slave: " + std::to_string(i)};
 
-                                auto update_data = this->convert_ping_report(ping_data);
-                                this->update_progress(i - 1, update_data);
+                        auto update_data = this->convert_ping_report(ping_data);
+                        this->update_progress(i - 1, update_data);
 
-                                this->check_if_slave_done();
+                        this->check_if_slave_done();
 
-                            } else {
-                                throw MasterMissingProgressReportException{"Incorrect message callback"};
-                            }
-                        }break;
-
-                        default: { ;
-                        }
+                    } else {
+                        throw MasterMissingProgressReportException{"Incorrect message callback"};
                     }
+                }break;
 
-
-                } else
-                    throw MasterMissingProgressReportException{
-                            "Slave Response initialized but empty, slave: " + std::to_string(i - 1)};
-            } else
-                throw MasterMissingProgressReportException{
-                        "Slave Response not initialized (probably did not received), slave: " + std::to_string(i - 1)};
+                default: { ; }
+            }
         }
 
         this->print_progress();

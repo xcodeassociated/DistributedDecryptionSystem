@@ -28,8 +28,8 @@ class Logger{
     Logger(boost::mutex& mutex_ref, const std::string _component_name);
 
 protected:
-    std::string component_name;
     boost::mutex& mu;
+    std::string component_name;
     std::string getTimestamp();
     bool flushed = true;
 

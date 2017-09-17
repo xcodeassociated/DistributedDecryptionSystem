@@ -29,9 +29,9 @@ public:
 
 private:
 
+    boost::shared_ptr<mpi::communicator> world = nullptr;
     boost::shared_ptr<Logger> logger = nullptr;
     boost::shared_ptr<LoggerError> logger_error = nullptr;
-    boost::shared_ptr<mpi::communicator> world = nullptr;
     std::string progress_file = "";
     boost::shared_ptr<MasterGateway> messageGateway = nullptr;
 
