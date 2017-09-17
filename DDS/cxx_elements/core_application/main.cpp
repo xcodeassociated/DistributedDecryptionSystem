@@ -56,7 +56,6 @@ int main(int argc, const char* argv[]) {
     if (world->rank() == 0) {
 
         try {
-
             if (runParameters.timeout > 0) {
                 std::cout << "Setting Gateway timeout for message request response: "
                           << runParameters.timeout << " microseconds" << std::endl;
@@ -64,9 +63,7 @@ int main(int argc, const char* argv[]) {
                 Gateway::set_timeout(runParameters.timeout);
             }
 
-            if (!runParameters.progress_dump_file.empty()){
-                std::cout << "Work progress will be stored in file: " << runParameters.progress_dump_file << std::endl;
-            }
+            std::cout << "Work progress will be stored in file: " << runParameters.progress_dump_file << std::endl;
 
             Master master(world, runParameters.progress_dump_file);
             if (runParameters.progress_file.empty()) {
