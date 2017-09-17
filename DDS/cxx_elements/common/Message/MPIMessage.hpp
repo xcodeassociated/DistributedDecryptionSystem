@@ -30,6 +30,7 @@ struct MpiMessage{
 
         template<class Archive>
         void serialize(Archive & ar, const unsigned int version) {
+            (void)version;
             ar & message_id;
             ar & event;
         }
@@ -67,6 +68,7 @@ struct MpiMessage{
 
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version) {
+        (void)version;
         ar & id;
         ar & receiver;
         ar & sender;

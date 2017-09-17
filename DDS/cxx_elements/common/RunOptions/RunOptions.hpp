@@ -22,7 +22,7 @@ namespace RunOptions {
 
     RunParameters get(int argc, const char* argv[]);
 
-};
+}
 
 
 #endif //DDS_RUNOPTIONS_HPP

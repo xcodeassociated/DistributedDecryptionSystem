@@ -40,7 +40,7 @@ void Decryptor::load_data_buffer() {
 
     std::string sha1 = file_lines[0];
     std::string ciphertext = "";
-    for (int i = 1; i < file_lines.size(); i++) {
+    for (std::size_t i = 1; i < file_lines.size(); i++) {
         ciphertext += file_lines[i];
         if (i < file_lines.size() - 2)
             ciphertext += '\n';
@@ -50,7 +50,7 @@ void Decryptor::load_data_buffer() {
     this->encrypted_sha = sha1;
 }
 
-bool Decryptor::init_decryptor(int _id, KeyRange _range, std::string _file_path, std::string _decrypted_path){
+void Decryptor::init_decryptor(int _id, KeyRange _range, std::string _file_path, std::string _decrypted_path){
     this->id = _id;
     this->range = _range;
     this->file_path = _file_path;

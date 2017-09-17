@@ -77,7 +77,7 @@ void Slave::init_and_start_workers() {
             uint64_t rbegin = range.first;
             uint64_t rend = range.second;
             KeyRange kr = KeyRange{rbegin, rend};
-            decryptor.init(i, kr, ef, df);
+            decryptor.init_decryptor(i, kr, ef, df);
             decryptor.start();
         };
         boost::shared_ptr<boost::thread> worker_thread_ptr = boost::make_shared<boost::thread>(worker_thread);

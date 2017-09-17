@@ -71,7 +71,7 @@ Master::key_ranges Master::calculate_range(uint64_t absolute_key_from, uint64_t 
         ranges.back().second = absolute_key_to;
 
     return ranges;
-};
+}
 
 
 void Master::update_progress(int rank, const boost::container::map<int, uint64_t>& info) {
@@ -130,7 +130,7 @@ boost::container::map<int, uint64_t> Master::convert_ping_report(const std::stri
         data[th] = key;
     }
     return data;
-};
+}
 
 int Master::get_world_size() const {
     return this->world->size();
@@ -232,7 +232,7 @@ bool Master::init(const std::string& file_name) {
         read_stream << ifile.rdbuf();
         key_ranges ranges = this->load_progress(read_stream.str());
 
-        if (total_threads != ranges.size())
+        if (total_threads != static_cast<int>(ranges.size()))
             throw MasterResumeException{"World size is different: " + std::to_string(this->get_world_size() - 1)};
 
         this->init_slaves(slaves, ranges);

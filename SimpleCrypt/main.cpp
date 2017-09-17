@@ -144,7 +144,7 @@ int main(int argc, const char* argv[]) {
             if (verbose == 0 || verbose == 2) {
                 std::cout << "Cipher Text data: ";
                 std::stringstream ss;
-                for (int i = 0; i < encrypted_text.size(); i++) {
+                for (std::size_t i = 0; i < encrypted_text.size(); i++) {
                     ss << "0x" << std::hex << (0xFF & static_cast<byte>(encrypted_text[i])) << " ";
                 }
                 std::cout << ss.str() << std::endl;
@@ -202,7 +202,7 @@ int main(int argc, const char* argv[]) {
 
             std::string sha1 = file_lines[0];
             std::string ciphertext = "";
-            for (int i = 1; i < file_lines.size(); i++) {
+            for (std::size_t i = 1; i < file_lines.size(); i++) {
                 ciphertext += file_lines[i];
                 if (i < file_lines.size() - 2)
                     ciphertext += '\n';
