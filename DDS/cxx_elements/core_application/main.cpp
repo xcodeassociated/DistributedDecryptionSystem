@@ -64,6 +64,10 @@ int main(int argc, const char* argv[]) {
                 Gateway::set_timeout(runParameters.timeout);
             }
 
+            if (!runParameters.progress_dump_file.empty()){
+                std::cout << "Work progress will be stored in file: " << runParameters.progress_dump_file << std::endl;
+            }
+
             Master master(world, runParameters.progress_dump_file);
             if (runParameters.progress_file.empty()) {
                 if (master.init(runParameters.range_begine, runParameters.range_end))
