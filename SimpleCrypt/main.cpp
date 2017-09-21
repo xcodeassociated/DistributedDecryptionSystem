@@ -67,7 +67,7 @@ int main(int argc, const char* argv[]) {
                 ("decrypt", po::value<std::string>(), "Decrypts file")
                 ("output", po::value<std::string>(), "Output file")
                 ("key", po::value<uint64_t>(), "AES Key file - int value")
-                ("verbose", po::value<uint64_t>(),
+                ("verbose", po::value<int>(),
                  "sets verbose: 1 = shows plain data form input, 2 = shows data for output, 0 = all");
 
         po::variables_map vm;

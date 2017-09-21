@@ -60,16 +60,3 @@ void Gateway::send(const int rank, const int tag, const MpiMessage &msg){
 boost::optional<MpiMessage> Gateway::receive(const int rank, const int tag) {
     return _receive(rank, tag);
 }
-
-boost::optional<MpiMessage> Gateway::send_and_receive(const int rank, const int tag, const MpiMessage &msg) {
-    _send(rank, tag, msg);
-    return _receive(rank, tag);
-}
-
-void Gateway::unsafe_send(const int rank, const int tag, const MpiMessage &msg){
-    _send(rank, tag, msg);
-}
-
-boost::optional<MpiMessage> Gateway::unsafe_receive(const int rank, const int tag) {
-    return _receive(rank, tag);
-}
