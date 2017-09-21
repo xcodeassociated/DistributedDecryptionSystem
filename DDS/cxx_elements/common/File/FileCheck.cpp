@@ -11,7 +11,7 @@ namespace File {
     bool file_empty(const std::string& file_name) {
         std::ifstream file(file_name, std::ios::binary);
         if (!file)
-            throw FileNotAccessibleException{"Cannot check_open: " + file_name};
+            throw FileNotAccessibleException{"Cannot open: " + file_name};
 
         return file.peek() == std::ifstream::traits_type::eof();
     }
