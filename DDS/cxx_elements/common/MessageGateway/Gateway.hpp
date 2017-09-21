@@ -21,8 +21,6 @@ protected:
 
     boost::shared_ptr<mpi::communicator> world;
     static int timeout;
-    void _send(const int rank, const int tag, const MpiMessage &msg);
-    boost::optional<MpiMessage> _receive(const int rank, const int tag);
 
 public:
 
@@ -35,9 +33,6 @@ public:
 
     void send(const int rank, const int tag,const MpiMessage &msg);
     boost::optional<MpiMessage> receive(const int rank, const int tag);
-    boost::optional<MpiMessage> send_and_receive(const int rank, const int tag, const MpiMessage &msg);
-    void unsafe_send(const int rank, const int tag, const MpiMessage &msg);
-    boost::optional<MpiMessage> unsafe_receive(const int rank, const int tag);
 };
 
 

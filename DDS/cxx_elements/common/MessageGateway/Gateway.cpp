@@ -30,11 +30,7 @@ void Gateway::set_timeout(int _timeout) {
     timeout = _timeout;
 }
 
-void Gateway::_send(const int rank, const int tag, const MpiMessage &msg){
-    world->send(rank, tag, msg);
-}
-
-boost::optional<MpiMessage> Gateway::_receive(const int rank, const int tag){
+boost::optional<MpiMessage> Gateway::receive(const int rank, const int tag){
     MpiMessage data;
     boost::posix_time::ptime begin_probe = boost::posix_time::microsec_clock::local_time();
     while (true) {
@@ -54,9 +50,6 @@ boost::optional<MpiMessage> Gateway::_receive(const int rank, const int tag){
 
 
 void Gateway::send(const int rank, const int tag, const MpiMessage &msg){
-    _send(rank, tag, msg);
+    world->send(rank, tag, msg);
 }
 
-boost::optional<MpiMessage> Gateway::receive(const int rank, const int tag) {
-    return _receive(rank, tag);
-}
