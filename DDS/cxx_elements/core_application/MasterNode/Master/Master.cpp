@@ -35,7 +35,7 @@ int Master::get_slave_polling_rate() {
 }
 
 void Master::set_slave_polling_rate(int rate) {
-    assert(rate > 0);
+    assert(rate >= 0);
     Master::slave_polling_rate = rate;
 }
 

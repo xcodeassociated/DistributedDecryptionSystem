@@ -57,7 +57,7 @@ namespace RunOptions {
 
             if (vm.count("slave_polling_rate")) {
                 int slave_polling = vm["slave_polling_rate"].as<int>();
-                if (slave_polling > 0)
+                if (slave_polling >= 0)
                     runParameters.slave_polling_rate = slave_polling;
                 else
                     throw IncorrectParameterException{"slave_polling_rate parameter must be grater than 0, passed: " + std::to_string(slave_polling)};
