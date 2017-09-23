@@ -15,19 +15,19 @@
 #include "Gateway.hpp"
 
 boost::atomic<message_id_type> Gateway::id{0};
-int Gateway::timeout = 10000000; //10s
+int Gateway::message_polling_timeout = 0;
 
 Gateway::Gateway(boost::shared_ptr<mpi::communicator> _world) : world{_world} {
-    ;
+    assert(Gateway::message_polling_timeout > 0);
 }
 
-int Gateway::get_timeout() {
-    return timeout;
+int Gateway::get_message_polling_timeout() {
+    return Gateway::message_polling_timeout;
 }
 
-void Gateway::set_timeout(int _timeout) {
+void Gateway::set_message_polling_timeout(int _timeout) {
     assert(_timeout > 0);
-    timeout = _timeout;
+    Gateway::message_polling_timeout = _timeout;
 }
 
 boost::optional<MpiMessage> Gateway::receive(const int rank, const int tag){
@@ -42,7 +42,7 @@ boost::optional<MpiMessage> Gateway::receive(const int rank, const int tag){
         boost::posix_time::ptime end_probe = boost::posix_time::microsec_clock::local_time();
         boost::posix_time::time_duration duration_probe = end_probe - begin_probe;
 
-        if (duration_probe.total_microseconds() >= timeout)
+        if (duration_probe.total_microseconds() >= Gateway::message_polling_timeout)
             break;
     }
     return {};

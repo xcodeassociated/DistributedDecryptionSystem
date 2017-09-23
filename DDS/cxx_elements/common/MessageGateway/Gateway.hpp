@@ -20,7 +20,7 @@ class Gateway {
 protected:
 
     boost::shared_ptr<mpi::communicator> world;
-    static int timeout;
+    static int message_polling_timeout;
 
 public:
 
@@ -28,8 +28,8 @@ public:
 
     Gateway(boost::shared_ptr<mpi::communicator>);
 
-    static int get_timeout();
-    static void set_timeout(int);
+    static int get_message_polling_timeout();
+    static void set_message_polling_timeout(int);
 
     void send(const int rank, const int tag,const MpiMessage &msg);
     boost::optional<MpiMessage> receive(const int rank, const int tag);

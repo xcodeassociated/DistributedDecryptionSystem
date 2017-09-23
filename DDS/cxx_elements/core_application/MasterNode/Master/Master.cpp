@@ -28,13 +28,25 @@
 #include "MasterExceptions.hpp"
 #include "Master.hpp"
 
+int Master::slave_polling_rate = 0;
+
+int Master::get_slave_polling_rate() {
+    return Master::slave_polling_rate;
+}
+
+void Master::set_slave_polling_rate(int rate) {
+    assert(rate > 0);
+    Master::slave_polling_rate = rate;
+}
+
 Master::Master(boost::shared_ptr<mpi::communicator> _world, std::string _progress_file) :
         world{_world},
         logger{Logger::instance("Master")},
         logger_error{LoggerError::instance("Master_ERROR")},
         progress_file{_progress_file},
         messageGateway(new MasterGateway(this->world))  {
-    ;
+
+    assert(Master::slave_polling_rate > 0);
 }
 
 Master::~Master() {
@@ -334,7 +346,7 @@ void Master::start() {
     this->work = true;
 
     while (this->work) {
-        boost::this_thread::sleep(boost::posix_time::seconds(this->refresh_rate));
+        boost::this_thread::sleep(boost::posix_time::microseconds(Master::slave_polling_rate));
 
         for (int i = 1; (i < this->world->size() && this->work); i++) {
             if (this->slaves_done.size() == this->progress.size()) {

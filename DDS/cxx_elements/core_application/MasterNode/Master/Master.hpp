@@ -38,7 +38,7 @@ private:
     bool work = false;
     bool inited = false;
 
-    int refresh_rate = 3;
+    static int slave_polling_rate;
 
     boost::container::map<int, key_ranges> progress;
     boost::container::vector<int> slaves_done;
@@ -58,20 +58,13 @@ public:
 
     Master(boost::shared_ptr<mpi::communicator>, std::string);
     ~Master();
+
+    static int get_slave_polling_rate();
+    static void set_slave_polling_rate(int rate);
+
     bool init(uint64_t, uint64_t);
     bool init(const std::string&);
-
-    inline int get_refresh_rate() const {
-        return this->refresh_rate;
-    }
-
-    void set_refresh_rate(int rate) {
-        assert(rate >= 0);
-        this->refresh_rate = rate;
-    }
-
     void start();
-
     void dump_progress();
     void print_progress();
     boost::container::map<int, key_ranges> get_progress() const;

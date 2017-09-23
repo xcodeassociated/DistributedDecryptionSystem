@@ -53,15 +53,16 @@ int main(int argc, const char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    Gateway::set_message_polling_timeout(runParameters.message_polling_timeout);
+
     if (world->rank() == 0) {
 
         try {
-            if (runParameters.timeout > 0) {
-                std::cout << "Setting Gateway timeout for message request response: "
-                          << runParameters.timeout << " microseconds" << std::endl;
+            std::cout << "Setting Gateway message polling timeout for message request response: "
+                          << runParameters.message_polling_timeout << " microseconds" << std::endl;
+            std::cout << "Setting Slave polling rate: " << runParameters.slave_polling_rate << " microseconds" << std::endl;
 
-                Gateway::set_timeout(runParameters.timeout);
-            }
+            Master::set_slave_polling_rate(runParameters.slave_polling_rate);
 
             std::cout << "Work progress will be stored in file: " << runParameters.progress_dump_file << std::endl;
 

@@ -15,7 +15,8 @@ struct RunParameters {
     std::string decrypted_file = "";
     std::string progress_file = "";
     std::string progress_dump_file = "DDS_Progress.txt";
-    int timeout = 0;
+    int message_polling_timeout = 10000000;         // 10s -- default
+    int slave_polling_rate = 3000000;    // 3s -- default
 };
 
 namespace RunOptions {
@@ -23,6 +24,5 @@ namespace RunOptions {
     RunParameters get(int argc, const char* argv[]);
 
 }
-
 
 #endif //DDS_RUNOPTIONS_HPP

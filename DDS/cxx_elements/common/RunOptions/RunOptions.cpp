@@ -26,8 +26,9 @@ namespace RunOptions {
                     ("decrypt", po::value<std::string>(), "decrypted file path")
                     ("progress_dump", po::value<std::string>(), "file that holds progress dump")
                     ("resume", po::value<std::string>(), "resume work from progress file")
-                    ("message_timeout", po::value<int>(), "sets max time (in microseconds) when Master waits for response from "
-                            "Slave after sending request -- 10s is default value");
+                    ("message_timeout", po::value<int>(), "set max time (in microseconds) when Master waits for response from "
+                            "Slave after sending request -- 10s is default value")
+                    ("slave_polling_rate", po::value<int>(), "set Slave progress and events polling (in microseconds) -- 3s is default value");
 
             po::variables_map vm;
             po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -49,9 +50,17 @@ namespace RunOptions {
             if (vm.count("message_timeout")) {
                 int timeout = vm["message_timeout"].as<int>();
                 if (timeout > 0)
-                    runParameters.timeout = timeout;
+                    runParameters.message_polling_timeout = timeout;
                 else
                     throw IncorrectParameterException{"message_timeout parameter must be grater than 0, passed: " + std::to_string(timeout)};
+            }
+
+            if (vm.count("slave_polling_rate")) {
+                int slave_polling = vm["slave_polling_rate"].as<int>();
+                if (slave_polling > 0)
+                    runParameters.slave_polling_rate = slave_polling;
+                else
+                    throw IncorrectParameterException{"slave_polling_rate parameter must be grater than 0, passed: " + std::to_string(slave_polling)};
             }
 
             if (vm.count("from") || resume) {
